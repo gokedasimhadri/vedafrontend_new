@@ -1,7 +1,7 @@
 import React from 'react';
 import { Mail, Phone, Award, UserCheck, ShieldCheck } from 'lucide-react';
 
-export default function TeamSection({ categories = [], events = [] }) {
+export default function TeamSection({ categories = [], events = [], committeeMembers = [] }) {
   // Extract ALL category coordinators dynamically from backend categories (supports multiple coordinators per category)
   const categoryCoordinators = [];
   categories.forEach(cat => {
@@ -54,33 +54,62 @@ export default function TeamSection({ categories = [], events = [] }) {
     }
   });
 
-  const leadershipTeam = [
+  // Live Convener & Members from Organisation Committee
+  const liveConveners = (committeeMembers || [])
+    .filter(m => m.status !== 'Inactive' && (m.role === 'Convener' || m.role === 'Member'))
+    .map(m => {
+      const emp = m.employee || {};
+      const empCode = emp.employeeCode || '';
+      return {
+        name: emp.name || emp.employeeName || m.name,
+        role: m.role === 'Convener' ? 'Fest Convener' : 'Organizing Member',
+        designation: emp.designation || (m.role === 'Convener' ? 'Fest Convener' : 'Committee Member'),
+        empCode
+      };
+    });
+
+  const basePatrons = [
     {
       name: 'Dr. N. Sesha Reddy',
       role: 'Chief Patron',
-      designation: 'Chairman, Aditya University',
-      image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
+      designation: 'Chairman, Aditya University'
     },
     {
       name: 'Dr. N. Suguna Reddy',
       role: 'Patron',
-      designation: 'Secretary, Aditya University',
-      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80'
+      designation: 'Secretary, Aditya University'
     },
     {
       name: 'Dr. M. Sreenivasa Reddy',
       role: 'General Convener',
-      designation: 'Principal & Dean - Academics',
-      image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80'
+      designation: 'Principal & Dean - Academics'
     }
   ];
 
-  const studentCoordinators = [
-    { name: 'K. V. Sai Tharun', dept: 'CSE (AI & ML)', role: 'Student President', phone: '+91 91234 56780', email: 'saitharun@gmail.com' },
-    { name: 'P. Ananya Sharma', dept: 'IT', role: 'Hackathon Lead', phone: '+91 98765 01234', email: 'ananya.s@gmail.com' },
-    { name: 'M. Rakesh Varma', dept: 'Robotics & Mech', role: 'Robotics Lead', phone: '+91 98491 23987', email: 'rakesh.v@gmail.com' },
-    { name: 'T. Haritha Reddy', dept: 'ECE', role: 'Event Operations Lead', phone: '+91 97012 34567', email: 'haritha.r@gmail.com' }
-  ];
+  const leadershipTeam = liveConveners.length > 0
+    ? [...basePatrons, ...liveConveners]
+    : basePatrons;
+
+  // Live Student Coordinators from Organisation Committee
+  const liveStudentCoords = (committeeMembers || [])
+    .filter(m => m.status !== 'Inactive' && (m.role === 'Student Coordinator' || m.rollNo))
+    .map(m => ({
+      name: m.studentName || m.name || m.rollNo,
+      dept: m.branch || m.department || m.rollNo,
+      role: 'Student Coordinator',
+      phone: m.mobileNumber || m.phone || 'N/A',
+      email: m.email || '',
+      rollNo: m.rollNo
+    }));
+
+  const studentCoordinators = liveStudentCoords.length > 0
+    ? liveStudentCoords
+    : [
+      { name: 'K. V. Sai Tharun', dept: 'CSE (AI & ML)', role: 'Student President', phone: '+91 91234 56780', email: 'saitharun@gmail.com' },
+      { name: 'P. Ananya Sharma', dept: 'IT', role: 'Hackathon Lead', phone: '+91 98765 01234', email: 'ananya.s@gmail.com' },
+      { name: 'M. Rakesh Varma', dept: 'Robotics & Mech', role: 'Robotics Lead', phone: '+91 98491 23987', email: 'rakesh.v@gmail.com' },
+      { name: 'T. Haritha Reddy', dept: 'ECE', role: 'Event Operations Lead', phone: '+91 97012 34567', email: 'haritha.r@gmail.com' }
+    ];
 
   return (
     <section id="team" style={{ padding: '80px 0', background: 'var(--bg-main)' }}>

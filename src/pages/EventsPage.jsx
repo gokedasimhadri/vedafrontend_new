@@ -3,127 +3,30 @@ import CategoryCard from '../components/CategoryCard';
 import EventCard from '../components/EventCard';
 import { Search, RefreshCw, ArrowLeft, Bot, Calendar } from 'lucide-react';
 
-const domainSubEventsMap = {
-  ENGIDESIGN: [
-    {
-      _id: 'sub_ed_1',
-      title: 'PAPER PRESENTATION : WASTE TO ENERGY',
-      categoryName: 'ENGINEERING & DESIGN',
-      categoryCode: 'ENGIDESIGN',
-      mode: 'OFFLINE',
-      venue: 'Mechanical Block Seminar Hall',
-      schedule: { fromDate: '2026-09-11T09:30:00Z', toDate: '2026-09-12T17:00:00Z' },
-      description: 'PAPER PRESENTATION : WASTE TO ENERGY 1. Eligibility: Participants are invited from all recognized engineering colleges across India to present cutting edge ideas in waste management.',
-      fee: { amountPerUnit: 200, currency: 'INR', chargeModel: 'PER_TEAM' },
-      registrationCount: 81,
-      banner: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=600&q=80',
-      participation: { type: 'TEAM', minTeamSize: 1, maxTeamSize: 3 }
-    },
-    {
-      _id: 'sub_ed_2',
-      title: 'POPSICLE BRIDGE',
-      categoryName: 'ENGINEERING & DESIGN',
-      categoryCode: 'ENGIDESIGN',
-      mode: 'OFFLINE',
-      venue: 'Civil Engineering Design Studio',
-      schedule: { fromDate: '2026-09-11T10:00:00Z', toDate: '2026-09-12T16:00:00Z' },
-      description: 'POPSICLE BRIDGE DESIGN & LOAD TESTING: Design, build, and test truss structures using standard popsicle sticks and glue. Evaluated on maximum load-to-weight ratio.',
-      fee: { amountPerUnit: 200, currency: 'INR', chargeModel: 'PER_TEAM' },
-      registrationCount: 155,
-      banner: 'https://images.unsplash.com/photo-1541888946425-d0fbb18015f6?auto=format&fit=crop&w=600&q=80',
-      participation: { type: 'TEAM', minTeamSize: 2, maxTeamSize: 4 }
-    },
-    {
-      _id: 'sub_ed_3',
-      title: 'PAPER PRESENTATION : SUSTAINABLE COMMUNITIES',
-      categoryName: 'ENGINEERING & DESIGN',
-      categoryCode: 'ENGIDESIGN',
-      mode: 'OFFLINE',
-      venue: 'Cotton Bhavan Auditorium',
-      schedule: { fromDate: '2026-09-11T09:30:00Z', toDate: '2026-09-12T17:00:00Z' },
-      description: 'PAPER PRESENTATION : SUSTAINABLE COMMUNITIES 1. Eligibility: Participants are invited from all disciplines to showcase renewable city models and green tech.',
-      fee: { amountPerUnit: 200, currency: 'INR', chargeModel: 'PER_TEAM' },
-      registrationCount: 53,
-      banner: 'https://images.unsplash.com/photo-1497435334941-8c899ee9e8e9?auto=format&fit=crop&w=600&q=80',
-      participation: { type: 'TEAM', minTeamSize: 1, maxTeamSize: 3 }
-    },
-    {
-      _id: 'sub_ed_4',
-      title: 'CAD 3D MODELLING & REVERSE ENGINEERING SPRINT',
-      categoryName: 'ENGINEERING & DESIGN',
-      categoryCode: 'ENGIDESIGN',
-      mode: 'OFFLINE',
-      venue: 'CAD/CAM Central Computer Center',
-      schedule: { fromDate: '2026-09-11T11:00:00Z', toDate: '2026-09-12T15:00:00Z' },
-      description: 'Rapid 3D parametric modelling competition on SolidWorks / CATIA based on physical cross-section blueprints and tolerances.',
-      fee: { amountPerUnit: 150, currency: 'INR', chargeModel: 'PER_PERSON' },
-      registrationCount: 94,
-      banner: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80',
-      participation: { type: 'INDIVIDUAL', minTeamSize: 1, maxTeamSize: 1 }
-    }
-  ],
-  CSE: [
-    {
-      _id: 'sub_cse_1',
-      title: 'BYTEHUSTLE 24-HOUR HACKATHON',
-      categoryName: 'COMPUTER SCIENCE & DIGITAL TECHNOLOGY',
-      categoryCode: 'CSE',
-      mode: 'HYBRID',
-      venue: 'Central Digital Labs',
-      schedule: { fromDate: '2026-09-11T10:00:00Z', toDate: '2026-09-12T10:00:00Z' },
-      description: 'Build futuristic solutions for AI, Web3, and Cyber Security within an intense 24-hour sprint.',
-      fee: { amountPerUnit: 500, currency: 'INR', chargeModel: 'PER_TEAM' },
-      registrationCount: 142,
-      banner: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=600&q=80',
-      participation: { type: 'TEAM', minTeamSize: 2, maxTeamSize: 4 }
-    },
-    {
-      _id: 'sub_cse_2',
-      title: 'CODE CLASH : SPEED PROGRAMMING',
-      categoryName: 'COMPUTER SCIENCE & DIGITAL TECHNOLOGY',
-      categoryCode: 'CSE',
-      mode: 'OFFLINE',
-      venue: 'Turing Computer Lab',
-      schedule: { fromDate: '2026-09-11T14:00:00Z', toDate: '2026-09-11T16:30:00Z' },
-      description: 'Fastest coder wins! Algorithmic problem solving across C++, Java, and Python with live leaderboard.',
-      fee: { amountPerUnit: 100, currency: 'INR', chargeModel: 'PER_PERSON' },
-      registrationCount: 210,
-      banner: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=600&q=80',
-      participation: { type: 'INDIVIDUAL', minTeamSize: 1, maxTeamSize: 1 }
-    }
-  ],
-  MGMT: [
-    {
-      _id: 'sub_mgmt_1',
-      title: 'BIZ-COGNITIO : BUSINESS PLAN & PITCH DECK',
-      categoryName: 'MANAGEMENT, BUSINESS & ENTREPRENEURSHIP',
-      categoryCode: 'MGMT',
-      mode: 'OFFLINE',
-      venue: 'Management Auditorium',
-      schedule: { fromDate: '2026-09-11T10:00:00Z', toDate: '2026-09-11T16:00:00Z' },
-      description: 'Pitch your breakthrough startup idea to venture capitalists, angel investors, and startup mentors.',
-      fee: { amountPerUnit: 300, currency: 'INR', chargeModel: 'PER_TEAM' },
-      registrationCount: 78,
-      banner: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=600&q=80',
-      participation: { type: 'TEAM', minTeamSize: 2, maxTeamSize: 3 }
-    }
-  ],
-  SCI: [
-    {
-      _id: 'sub_sci_1',
-      title: 'CRIME SCENE INVESTIGATION & FORENSIC CHALLENGE',
-      categoryName: 'SCIENCE, FORENSICS & INVESTIGATION',
-      categoryCode: 'SCI',
-      mode: 'OFFLINE',
-      venue: 'Forensic Science Simulation Lab',
-      schedule: { fromDate: '2026-09-11T11:00:00Z', toDate: '2026-09-12T14:00:00Z' },
-      description: 'Decode fingerprint evidence, blood spatter patterns, and chemical traces to crack the simulation mystery.',
-      fee: { amountPerUnit: 200, currency: 'INR', chargeModel: 'PER_TEAM' },
-      registrationCount: 65,
-      banner: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=600&q=80',
-      participation: { type: 'TEAM', minTeamSize: 2, maxTeamSize: 4 }
-    }
-  ]
+// Helper function to accurately match backend Central Events to their Category
+const isEventInCategory = (event, category) => {
+  if (!event || !category) return false;
+
+  // 1. Match by Category ID (_id)
+  const eventCatId = event.categoryId?._id
+    ? String(event.categoryId._id)
+    : (event.categoryId ? String(event.categoryId) : '');
+  const catId = category._id ? String(category._id) : '';
+  if (eventCatId && catId && eventCatId === catId) return true;
+
+  // 2. Match by Category Name (case-insensitive & trimmed)
+  const eventCatName = (typeof event.categoryName === 'string'
+    ? event.categoryName
+    : (event.categoryName?.name || '')).trim().toLowerCase();
+  const catName = (category.name || '').trim().toLowerCase();
+  if (eventCatName && catName && eventCatName === catName) return true;
+
+  // 3. Match by Category Code (case-insensitive & trimmed)
+  const eventCatCode = (event.categoryCode || '').trim().toUpperCase();
+  const catCode = (category.code || '').trim().toUpperCase();
+  if (eventCatCode && catCode && eventCatCode === catCode) return true;
+
+  return false;
 };
 
 export default function EventsPage({
@@ -144,62 +47,31 @@ export default function EventsPage({
     setSelectedSubcategory('ALL');
   }, [selectedCategory]);
 
-  // Default Categories matching Screenshot
-  const displayCategories = categories.length > 0 ? categories : [
-    {
-      _id: 'c1',
-      name: 'ENGINEERING & DESIGN',
-      code: 'ENGIDESIGN',
-      banner: { url: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80' }
-    },
-    {
-      _id: 'c2',
-      name: 'COMPUTER SCIENCE & DIGITAL TECHNOLOGY',
-      code: 'CSE',
-      banner: { url: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80' }
-    },
-    {
-      _id: 'c3',
-      name: 'MANAGEMENT, BUSINESS & ENTREPRENEURSHIP',
-      code: 'MGMT',
-      banner: { url: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=800&q=80' }
-    },
-    {
-      _id: 'c4',
-      name: 'SCIENCE, FORENSICS & INVESTIGATION',
-      code: 'SCI',
-      banner: { url: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=800&q=80' }
-    }
-  ];
+  const displayCategories = categories;
 
-  // Compute live metrics dynamically from real backend events and categories
+  // Real live metrics dynamically calculated from backend events
   const totalBackendRegistrations = events.reduce((sum, e) => sum + (e.registrationCount || 0), 0);
-  const liveTeamsCount = totalBackendRegistrations > 0
-    ? totalBackendRegistrations
-    : (events.length > 0 ? events.length * 120 : 4569);
-  const liveParticipantsCount = totalBackendRegistrations > 0
-    ? events.reduce((sum, e) => sum + ((e.registrationCount || 0) * (e.participation?.minTeamSize || 2)), 0)
-    : (liveTeamsCount * 2 + 546);
+  const liveTeamsCount = totalBackendRegistrations;
+  const liveParticipantsCount = events.reduce(
+    (sum, e) => sum + ((e.registrationCount || 0) * (e.participation?.minTeamSize || 1)),
+    0
+  );
 
   // If a category is selected (Level 2: Category Detail & Sub-Events View)
   const activeCatObj = activeCategory
-    ? displayCategories.find(c => c.code === activeCategory || c._id === activeCategory || c.name === activeCategory)
+    ? displayCategories.find(c =>
+        c.code === activeCategory ||
+        c._id === activeCategory ||
+        c.name?.trim().toLowerCase() === String(activeCategory).trim().toLowerCase()
+      )
     : null;
 
-  // Real backend events for this category
+  // Real backend events strictly for this selected category
   const realCategoryEvents = activeCatObj
-    ? events.filter(
-        ev => ev.categoryId === activeCatObj._id ||
-              ev.categoryCode === activeCatObj.code ||
-              ev.categoryName === activeCatObj.name
-      )
+    ? events.filter(ev => isEventInCategory(ev, activeCatObj))
     : [];
 
-  const defaultSubEvents = activeCatObj ? (domainSubEventsMap[activeCatObj.code] || domainSubEventsMap['ENGIDESIGN'] || []) : [];
-  // Use real events if available; otherwise show template sub-events so UI remains informative
-  const combinedSubEvents = realCategoryEvents.length > 0 ? realCategoryEvents : defaultSubEvents;
-
-  const filteredSubEvents = combinedSubEvents.filter(ev => {
+  const filteredSubEvents = realCategoryEvents.filter(ev => {
     const matchesSearch = !searchQuery.trim() ||
       (typeof ev.title === 'string' && ev.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (typeof ev.description === 'string' && ev.description.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -215,11 +87,12 @@ export default function EventsPage({
     ? activeCatObj.subcategories.filter(s => s.isActive !== false)
     : [];
 
-  const totalCategoryEventsCount = realCategoryEvents.length > 0
-    ? realCategoryEvents.length
-    : (activeSubcats.length > 0 ? activeSubcats.length : filteredSubEvents.length);
-  const totalCategoryTeamsCount = realCategoryEvents.reduce((acc, e) => acc + (e.registrationCount || 0), 0) || (totalCategoryEventsCount * 45);
-  const totalCategoryParticipantsCount = totalCategoryTeamsCount * 2 + 124;
+  const totalCategoryEventsCount = realCategoryEvents.length;
+  const totalCategoryTeamsCount = realCategoryEvents.reduce((acc, e) => acc + (e.registrationCount || 0), 0);
+  const totalCategoryParticipantsCount = realCategoryEvents.reduce(
+    (acc, e) => acc + ((e.registrationCount || 0) * (e.participation?.minTeamSize || 1)),
+    0
+  );
 
   let bannerUrl = typeof activeCatObj?.banner === 'object' && activeCatObj.banner?.url
     ? activeCatObj.banner.url
@@ -232,7 +105,7 @@ export default function EventsPage({
   }
 
   // =========================================================================
-  // VIEW 2: INSIDE CATEGORY SUB-EVENTS VIEW (When user clicked "View Events ->")
+  // VIEW 2: INSIDE CATEGORY SUB-EVENTS VIEW
   // =========================================================================
   if (activeCatObj) {
     return (
@@ -314,7 +187,7 @@ export default function EventsPage({
             />
           </div>
 
-          {/* Dark Navy Metric Strip Underneath (Matching Screenshot 1) */}
+          {/* Dark Navy Metric Strip Underneath */}
           <div style={{
             background: '#071830',
             color: '#ffffff',
@@ -375,7 +248,7 @@ export default function EventsPage({
           </div>
         </div>
 
-        {/* Sub-Events List (Matching Screenshot 2) */}
+        {/* Sub-Events List */}
         <div className="veda-container" style={{ paddingTop: '50px' }}>
           <div style={{
             display: 'flex',
@@ -396,7 +269,7 @@ export default function EventsPage({
               margin: 0,
               fontFamily: 'Outfit, sans-serif'
             }}>
-              EVENTS
+              {activeCatObj.name}
             </h1>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -404,7 +277,7 @@ export default function EventsPage({
                 <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                 <input
                   type="text"
-                  placeholder="Search sub-events..."
+                  placeholder="Search events..."
                   className="form-control"
                   style={{ paddingLeft: '38px', borderRadius: '9999px', fontSize: '0.88rem' }}
                   value={searchQuery}
@@ -412,19 +285,21 @@ export default function EventsPage({
                 />
               </div>
 
-              <button
-                onClick={onRefresh}
-                className="btn-outline"
-                style={{ borderRadius: '9999px', padding: '8px 16px', fontSize: '0.84rem' }}
-                title="Sync from Admin Portal"
-              >
-                <RefreshCw size={14} />
-                <span>Sync Live</span>
-              </button>
+              {onRefresh && (
+                <button
+                  onClick={onRefresh}
+                  className="btn-outline"
+                  style={{ borderRadius: '9999px', padding: '8px 16px', fontSize: '0.84rem' }}
+                  title="Sync from Admin Portal"
+                >
+                  <RefreshCw size={14} />
+                  <span>Sync Live</span>
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Level 3: Event Subcategories Tabs (Matching Admin Portal Hierarchy) */}
+          {/* Subcategories Filter Tabs */}
           {activeSubcats.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '28px' }}>
               <button
@@ -440,7 +315,7 @@ export default function EventsPage({
                   cursor: 'pointer'
                 }}
               >
-                All Activities ({combinedSubEvents.length})
+                All Activities ({realCategoryEvents.length})
               </button>
               {activeSubcats.map((sub) => (
                 <button
@@ -463,27 +338,48 @@ export default function EventsPage({
             </div>
           )}
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-            gap: '32px'
-          }}>
-            {filteredSubEvents.map((event) => (
-              <EventCard
-                key={event._id || event.slug}
-                event={event}
-                onViewDetails={onViewDetails}
-                onRegister={onRegister}
-              />
-            ))}
-          </div>
+          {/* Real Events Grid or Empty State */}
+          {filteredSubEvents.length > 0 ? (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+              gap: '32px'
+            }}>
+              {filteredSubEvents.map((event) => (
+                <EventCard
+                  key={event._id || event.slug}
+                  event={event}
+                  onViewDetails={onViewDetails}
+                  onRegister={onRegister}
+                />
+              ))}
+            </div>
+          ) : (
+            <div style={{
+              textAlign: 'center',
+              padding: '70px 24px',
+              background: '#f8fafc',
+              borderRadius: '24px',
+              border: '1.5px dashed #cbd5e1',
+              maxWidth: '640px',
+              margin: '30px auto'
+            }}>
+              <Calendar size={48} style={{ color: '#94a3b8', marginBottom: '16px' }} />
+              <h3 style={{ fontSize: '1.3rem', fontWeight: '800', color: '#0b2240', marginBottom: '8px' }}>
+                No Events Available
+              </h3>
+              <p style={{ color: '#64748b', fontSize: '0.94rem', margin: 0, lineHeight: 1.5 }}>
+                There are currently no events registered under <strong>{activeCatObj.name}</strong>.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
   // =========================================================================
-  // VIEW 1: FIRST EVENTS LANDING VIEW (Matching user screenshot: EXPLORE EVENTS)
+  // VIEW 1: FIRST EVENTS LANDING VIEW (EXPLORE EVENTS)
   // =========================================================================
   return (
     <div style={{ background: 'var(--bg-page)', minHeight: '100vh', padding: '40px 0 80px' }}>
@@ -516,7 +412,7 @@ export default function EventsPage({
           </h1>
         </div>
 
-        {/* Dynamic Metric Pill Bar (Matching Screenshot with Live Data) */}
+        {/* Dynamic Metric Pill Bar strictly reflecting backend data */}
         <div style={{
           maxWidth: '820px',
           margin: '0 auto 50px',
@@ -553,7 +449,7 @@ export default function EventsPage({
           </div>
         </div>
 
-        {/* Category Cards Grid (Live Categories from Admin Portal) */}
+        {/* Category Cards Grid (Live Categories with real event counts) */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))',
@@ -562,13 +458,8 @@ export default function EventsPage({
           alignItems: 'stretch'
         }}>
           {displayCategories.map((cat, idx) => {
-            const catEvents = events.filter(e =>
-              e.categoryId === cat._id ||
-              e.categoryCode === cat.code ||
-              e.categoryName === cat.name
-            );
-            const subcats = Array.isArray(cat.subcategories) ? cat.subcategories.filter(s => s.isActive !== false) : [];
-            const count = catEvents.length > 0 ? catEvents.length : (subcats.length > 0 ? subcats.length : (cat.eventCount || 0));
+            const catEvents = events.filter(e => isEventInCategory(e, cat));
+            const count = catEvents.length;
             return (
               <CategoryCard
                 key={cat._id || cat.code || idx}

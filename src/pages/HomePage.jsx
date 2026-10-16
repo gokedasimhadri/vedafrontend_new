@@ -64,13 +64,16 @@ export default function HomePage({
             marginBottom: '60px'
           }}>
             {displayCategories.map((cat, idx) => {
-              const catEvents = events.filter(e =>
-                e.categoryId === cat._id ||
-                e.categoryCode === cat.code ||
-                e.categoryName === cat.name
-              );
-              const subcats = Array.isArray(cat.subcategories) ? cat.subcategories.filter(s => s.isActive !== false) : [];
-              const count = catEvents.length > 0 ? catEvents.length : (subcats.length > 0 ? subcats.length : (cat.eventCount || 0));
+              const catEvents = events.filter(e => {
+                const eCatId = e.categoryId?._id ? String(e.categoryId._id) : (e.categoryId ? String(e.categoryId) : '');
+                const cId = cat._id ? String(cat._id) : '';
+                if (eCatId && cId && eCatId === cId) return true;
+                const eName = (e.categoryName || '').trim().toLowerCase();
+                const cName = (cat.name || '').trim().toLowerCase();
+                if (eName && cName && eName === cName) return true;
+                return false;
+              });
+              const count = catEvents.length;
               return (
                 <CategoryCard
                   key={cat._id || cat.code || idx}

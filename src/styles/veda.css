@@ -822,6 +822,26 @@ h6,
   box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
 }
 
+.form-control.is-invalid {
+  border-color: #ef4444 !important;
+  background-color: #fff5f5 !important;
+}
+
+.form-control.is-invalid:focus {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
+}
+
+.form-error-msg {
+  font-size: 0.78rem;
+  color: #dc2626;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
 /* Responsive */
 @media (max-width: 992px) {
   .hero-grid {

@@ -18,6 +18,11 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
         },
+        '/adityaapi': {
+          target: 'https://info.aec.edu.in',
+          changeOrigin: true,
+          secure: false,
+        },
         '/uploads': {
           target: backendUrl,
           changeOrigin: true,

@@ -6,7 +6,10 @@ export default function Navbar({
   setDarkMode,
   activePage = 'home',
   setActivePage,
-  onRegisterClick
+  onRegisterClick,
+  currentUser,
+  onLoginClick,
+  onLogoutClick
 }) {
   const navItems = [
     { id: 'home', label: 'Home' },
@@ -92,8 +95,8 @@ export default function Navbar({
             </ul>
           </nav>
 
-          {/* Actions: Dark mode + Register / Login */}
-          <div className="nav-actions">
+          {/* Actions: Dark mode + Login + Register */}
+          <div className="nav-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button
               onClick={() => setDarkMode(!darkMode)}
               className="theme-toggle-btn"
@@ -101,6 +104,96 @@ export default function Navbar({
             >
               {darkMode ? <Sun size={19} /> : <Moon size={19} />}
             </button>
+
+            {currentUser ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div
+                  style={{
+                    background: '#e0f2fe',
+                    color: '#0369a1',
+                    padding: '7px 16px',
+                    borderRadius: '9999px',
+                    fontWeight: '800',
+                    fontSize: '0.85rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 2px 6px rgba(2, 132, 199, 0.15)'
+                  }}
+                  title={`Logged in as ${currentUser.name} (${currentUser.roll || currentUser.email})`}
+                >
+                  <span style={{
+                    width: '22px',
+                    height: '22px',
+                    borderRadius: '50%',
+                    background: '#0284c7',
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.72rem',
+                    fontWeight: '900'
+                  }}>
+                    {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'S'}
+                  </span>
+                  <span>{currentUser.name?.split(' ')[0] || 'Student'}</span>
+                </div>
+
+                <button
+                  onClick={onLogoutClick}
+                  style={{
+                    background: 'transparent',
+                    border: '1.5px solid #e2e8f0',
+                    color: '#64748b',
+                    padding: '7px 14px',
+                    borderRadius: '9999px',
+                    fontWeight: '700',
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.borderColor = '#ef4444';
+                    e.currentTarget.style.color = '#ef4444';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.borderColor = '#e2e8f0';
+                    e.currentTarget.style.color = '#64748b';
+                  }}
+                  title="Logout"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={onLoginClick}
+                style={{
+                  background: 'transparent',
+                  border: darkMode ? '1.5px solid #64748b' : '1.5px solid #071830',
+                  color: darkMode ? '#ffffff' : '#071830',
+                  padding: '9px 22px',
+                  borderRadius: '9999px',
+                  fontWeight: '800',
+                  fontSize: '0.92rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  letterSpacing: '0.02em'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = '#0284c7';
+                  e.currentTarget.style.borderColor = '#0284c7';
+                  e.currentTarget.style.color = '#ffffff';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.borderColor = darkMode ? '#64748b' : '#071830';
+                  e.currentTarget.style.color = darkMode ? '#ffffff' : '#071830';
+                }}
+              >
+                Login
+              </button>
+            )}
 
             <button onClick={onRegisterClick} className="btn-primary">
               <span>Register Now</span>

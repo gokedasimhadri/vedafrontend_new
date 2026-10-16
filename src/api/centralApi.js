@@ -119,5 +119,149 @@ export const centralApi = {
       throw new Error(data.message || 'Registration failed');
     }
     return data;
+  },
+
+  /**
+   * Verify Razorpay payment for registration
+   * API: POST /api/central-event-registrations/verify-payment
+   */
+  async verifyRegistrationPayment(verifyPayload) {
+    const response = await fetch(`${BASE_URL}/central-event-registrations/verify-payment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(verifyPayload)
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Payment verification failed');
+    }
+    return data;
+  },
+
+  /**
+   * Fetch Organisation Committee members from backend
+   * API: GET /api/central-events/organisation-committee?event_type=VEDA
+   */
+  async getOrganisationCommittee(eventType = 'VEDA') {
+    try {
+      const response = await fetch(`${BASE_URL}/central-events/organisation-committee?event_type=${eventType}`);
+      if (!response.ok) throw new Error(`Organisation Committee status: ${response.status}`);
+      const data = await response.json();
+      if (data.success && Array.isArray(data.data)) {
+        return data.data;
+      }
+      return [];
+    } catch (err) {
+      console.error('Failed to fetch organisation committee:', err);
+      return [];
+    }
+  },
+
+  /**
+   * Student Login
+   * API: POST /api/event-students/login
+   */
+  async studentLogin(email, password) {
+    const response = await fetch(`${BASE_URL}/event-students/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || data.message || 'Login failed');
+    }
+    return data;
+  },
+
+  /**
+   * Student Register / Sign Up
+   * API: POST /api/event-students/register
+   */
+  async studentRegister(studentData) {
+    const response = await fetch(`${BASE_URL}/event-students/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(studentData)
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || data.message || 'Registration failed');
+    }
+    return data;
+  },
+
+  /**
+   * Auto-populate Student Details from Aditya ECAP API
+   * Endpoint: https://info.aec.edu.in/adityaapi/api/studentdata/{rollNo}
+   * Fetches API Key from .env (VITE_STUDENT_API_KEY)
+   */
+  async lookupStudentByRoll(rollNo) {
+    if (!rollNo) return null;
+    const cleanRoll = String(rollNo).trim().toUpperCase();
+    if (cleanRoll.length < 5) return null;
+
+    const apiKey = import.meta.env.VITE_STUDENT_API_KEY || '4T4K65HWxqKD90AEZoCZLqA+m3nq6JvwDRDHIJUBFc4=';
+    const apiUrl = import.meta.env.VITE_STUDENT_DATA_API_URL || 'https://info.aec.edu.in/adityaapi/api/studentdata';
+
+    const headers = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    };
+    if (apiKey) {
+      headers['apiKey'] = apiKey;
+      headers['X-API-Key'] = apiKey;
+      headers['x-api-key'] = apiKey;
+    }
+
+    // Attempt 1: Proxied request via Vite dev server
+    try {
+      const proxiedUrl = `/adityaapi/api/studentdata/${encodeURIComponent(cleanRoll)}`;
+      const response = await fetch(proxiedUrl, { headers });
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+          return data[0];
+        }
+        if (data && typeof data === 'object' && !data.error) {
+          return data;
+        }
+      }
+    } catch (err) {
+      // fallback
+    }
+
+    // Attempt 2: Direct call to full apiUrl configured in .env
+    try {
+      const response = await fetch(`${apiUrl.replace(/\/+$/, '')}/${encodeURIComponent(cleanRoll)}`, { headers });
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+          return data[0];
+        }
+        if (data && typeof data === 'object' && !data.error) {
+          return data;
+        }
+      }
+    } catch (err) {
+      // fallback
+    }
+
+    // Attempt 3: Backend proxy fallback
+    try {
+      const response = await fetch(`${BASE_URL}/payments/registrations/branch/${encodeURIComponent(cleanRoll)}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data) && data.length > 0) {
+          return data[0];
+        }
+      }
+    } catch (err) {
+      console.error('All student lookup attempts failed:', err);
+    }
+
+    return null;
   }
 };
+
+
