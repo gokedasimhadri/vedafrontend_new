@@ -11,6 +11,7 @@ import EventDetailsModal from './components/EventDetailsModal';
 import RegistrationModal from './components/RegistrationModal';
 import EventDetailPage from './pages/EventDetailPage';
 import StudentLoginModal from './components/StudentLoginModal';
+import MyRegistrationsPage from './pages/MyRegistrationsPage';
 import { centralApi } from './api/centralApi';
 import './styles/veda.css';
 
@@ -106,6 +107,11 @@ export default function App() {
         currentUser={currentUser}
         onLoginClick={() => setShowLoginModal(true)}
         onLogoutClick={handleLogout}
+        onMyPassesClick={() => {
+          setActivePage('my-passes');
+          setSelectedEventForDetails(null);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
       />
 
       {/* Main Content Area - Multi-Page View Routing */}
@@ -175,6 +181,17 @@ export default function App() {
             {activePage === 'contact' && (
               <ContactPage />
             )}
+
+            {activePage === 'my-passes' && currentUser && (
+              <MyRegistrationsPage
+                currentUser={currentUser}
+                onRegisterMore={() => {
+                  setActivePage('events');
+                  setSelectedCategory(null);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
+            )}
           </>
         )}
       </main>
@@ -188,6 +205,13 @@ export default function App() {
           event={selectedEventForRegister}
           currentUser={currentUser}
           onClose={() => setSelectedEventForRegister(null)}
+          onRequestLogin={() => setShowLoginModal(true)}
+          onSuccess={() => {
+            setSelectedEventForRegister(null);
+            setActivePage('my-passes');
+            setSelectedEventForDetails(null);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
         />
       )}
 
@@ -199,6 +223,7 @@ export default function App() {
           setPendingEventForRegister(null);
         }}
         onLoginSuccess={handleLoginSuccess}
+        defaultMode="signup"
       />
     </div>
   );

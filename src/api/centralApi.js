@@ -158,15 +158,30 @@ export const centralApi = {
   },
 
   /**
-   * Student Login
-   * API: POST /api/event-students/login
+   * Step 1: Student Login (Queries central_event_student_account collection)
+   * API: POST /api/central-event-student-account/login or /api/event-students/login
    */
-  async studentLogin(email, password) {
-    const response = await fetch(`${BASE_URL}/event-students/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
+  async studentLogin(identifierOrEmail, password) {
+    let response;
+    try {
+      response = await fetch(`${BASE_URL}/central-event-student-account/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: identifierOrEmail, email: identifierOrEmail, password })
+      });
+    } catch {
+      // network fallback
+    }
+
+    // Only fallback if route was 404 (not mounted) or network error
+    if (!response || response.status === 404) {
+      response = await fetch(`${BASE_URL}/event-students/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: identifierOrEmail, identifier: identifierOrEmail, password })
+      });
+    }
+
     const data = await response.json();
     if (!response.ok) {
       throw new Error(data.error || data.message || 'Login failed');
@@ -175,20 +190,85 @@ export const centralApi = {
   },
 
   /**
-   * Student Register / Sign Up
-   * API: POST /api/event-students/register
+   * Step 1: Student Register / Sign Up (Stores into central_event_student_account collection)
+   * API: POST /api/central-event-student-account/register or /api/event-students/register
    */
   async studentRegister(studentData) {
-    const response = await fetch(`${BASE_URL}/event-students/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(studentData)
-    });
+    let response;
+    try {
+      response = await fetch(`${BASE_URL}/central-event-student-account/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(studentData)
+      });
+    } catch {
+      // network fallback
+    }
+
+    // Only fallback if route was 404 (not mounted) or network error
+    if (!response || response.status === 404) {
+      response = await fetch(`${BASE_URL}/event-students/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(studentData)
+      });
+    }
+
     const data = await response.json();
     if (!response.ok) {
       throw new Error(data.error || data.message || 'Registration failed');
     }
     return data;
+  },
+
+  /**
+   * Step 2 & 3: Fetch all registrations for a student
+   * API: GET /api/central-event-registrations/student/:rollOrId
+   */
+  async getStudentRegistrations(rollOrId) {
+    try {
+      const response = await fetch(`${BASE_URL}/central-event-registrations/student/${encodeURIComponent(rollOrId)}`);
+      if (!response.ok) throw new Error(`Status ${response.status}`);
+      const res = await response.json();
+      return res.data || [];
+    } catch (err) {
+      console.error('Failed to fetch student registrations:', err);
+      return [];
+    }
+  },
+
+  /**
+   * Step 2 & 3: Fetch all registrations WITH payment data for a student
+   * Combines central_event_student_registrations + central_event_student_payments
+   * API: GET /api/central-event-registrations/student/:rollOrId/with-payments
+   */
+  async getStudentRegistrationsWithPayments(rollOrId) {
+    try {
+      const response = await fetch(`${BASE_URL}/central-event-registrations/student/${encodeURIComponent(rollOrId)}/with-payments`);
+      if (!response.ok) throw new Error(`Status ${response.status}`);
+      const res = await response.json();
+      return res.data || [];
+    } catch (err) {
+      // Fallback: just get registrations without payment info
+      console.warn('Falling back to standard registrations fetch:', err.message);
+      return this.getStudentRegistrations(rollOrId);
+    }
+  },
+
+  /**
+   * Step 3: Fetch payment status for a specific registration ID
+   * API: GET /api/central-event-registrations/:id/payment-status
+   */
+  async getRegistrationPaymentStatus(registrationId) {
+    try {
+      const response = await fetch(`${BASE_URL}/central-event-registrations/${encodeURIComponent(registrationId)}/payment-status`);
+      if (!response.ok) throw new Error(`Status ${response.status}`);
+      const res = await response.json();
+      return res.data || null;
+    } catch (err) {
+      console.error('Failed to fetch registration payment status:', err);
+      return null;
+    }
   },
 
   /**

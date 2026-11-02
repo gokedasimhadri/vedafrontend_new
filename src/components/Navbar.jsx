@@ -9,7 +9,8 @@ export default function Navbar({
   onRegisterClick,
   currentUser,
   onLoginClick,
-  onLogoutClick
+  onLogoutClick,
+  onMyPassesClick
 }) {
   const navItems = [
     { id: 'home', label: 'Home' },
@@ -108,19 +109,21 @@ export default function Navbar({
             {currentUser ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div
-                  style={{
-                    background: '#e0f2fe',
-                    color: '#0369a1',
-                    padding: '7px 16px',
-                    borderRadius: '9999px',
-                    fontWeight: '800',
-                    fontSize: '0.85rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    boxShadow: '0 2px 6px rgba(2, 132, 199, 0.15)'
-                  }}
-                  title={`Logged in as ${currentUser.name} (${currentUser.roll || currentUser.email})`}
+                style={{
+                  background: '#e0f2fe',
+                  color: '#0369a1',
+                  padding: '7px 16px',
+                  borderRadius: '9999px',
+                  fontWeight: '800',
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 6px rgba(2, 132, 199, 0.15)',
+                  cursor: 'pointer'
+                }}
+                title={`Logged in as ${currentUser.name} (${currentUser.roll || currentUser.email})`}
+                onClick={onMyPassesClick}
                 >
                   <span style={{
                     width: '22px',
@@ -138,6 +141,38 @@ export default function Navbar({
                   </span>
                   <span>{currentUser.name?.split(' ')[0] || 'Student'}</span>
                 </div>
+
+                {/* My Passes Link */}
+                <button
+                  onClick={onMyPassesClick}
+                  style={{
+                    background: activePage === 'my-passes' ? '#e0f2fe' : 'transparent',
+                    border: activePage === 'my-passes' ? '1.5px solid #0284c7' : '1.5px solid #e2e8f0',
+                    color: activePage === 'my-passes' ? '#0284c7' : '#64748b',
+                    padding: '7px 14px',
+                    borderRadius: '9999px',
+                    fontWeight: '800',
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    display: 'flex', alignItems: 'center', gap: '5px'
+                  }}
+                  onMouseOver={(e) => {
+                    if (activePage !== 'my-passes') {
+                      e.currentTarget.style.borderColor = '#0284c7';
+                      e.currentTarget.style.color = '#0284c7';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (activePage !== 'my-passes') {
+                      e.currentTarget.style.borderColor = '#e2e8f0';
+                      e.currentTarget.style.color = '#64748b';
+                    }
+                  }}
+                  title="My Event Passes"
+                >
+                  🎫 My Passes
+                </button>
 
                 <button
                   onClick={onLogoutClick}
@@ -191,7 +226,7 @@ export default function Navbar({
                   e.currentTarget.style.color = darkMode ? '#ffffff' : '#071830';
                 }}
               >
-                Login
+                Sign Up / Login
               </button>
             )}
 
