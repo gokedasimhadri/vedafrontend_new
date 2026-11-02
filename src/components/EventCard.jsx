@@ -266,31 +266,66 @@ export default function EventCard({ event, onViewDetails, onRegister }) {
         </div>
       </div>
 
-      {/* Card Footer Strip with ONLY "View Details ->" Button (Matching Screenshot 1) */}
+      {/* Card Footer Strip with "View Details" and "Register Now" Buttons */}
       <div style={{
         background: '#f8fafc',
         borderTop: '1px solid #f1f5f9',
         padding: '12px 20px',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'flex-end'
+        justifyContent: 'space-between',
+        gap: '10px'
       }}>
         <button
+          type="button"
           onClick={(e) => {
             e.stopPropagation();
             onViewDetails && onViewDetails(event);
           }}
           style={{
+            background: 'transparent',
+            color: '#071830',
+            padding: '7px 14px',
+            borderRadius: '9999px',
+            fontSize: '0.84rem',
+            fontWeight: '700',
+            border: '1.5px solid #cbd5e1',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.borderColor = '#0284c7';
+            e.currentTarget.style.color = '#0284c7';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.borderColor = '#cbd5e1';
+            e.currentTarget.style.color = '#071830';
+          }}
+        >
+          <span>Details</span>
+          <ArrowRight size={14} />
+        </button>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRegister && onRegister(event);
+          }}
+          style={{
             background: '#071830',
             color: '#ffffff',
-            padding: '8px 20px',
+            padding: '8px 18px',
             borderRadius: '9999px',
             fontSize: '0.86rem',
-            fontWeight: '700',
+            fontWeight: '800',
             border: 'none',
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '6px',
             cursor: 'pointer',
             boxShadow: '0 2px 8px rgba(7, 24, 48, 0.25)',
             transition: 'all 0.2s ease'
@@ -304,8 +339,7 @@ export default function EventCard({ event, onViewDetails, onRegister }) {
             e.currentTarget.style.transform = 'translateY(0)';
           }}
         >
-          <span>View Details</span>
-          <ArrowRight size={15} />
+          <span>Register Now</span>
         </button>
       </div>
     </div>
