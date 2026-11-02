@@ -50,32 +50,81 @@ export default function StudentLoginModal({ isOpen, onClose, onLoginSuccess, ini
     setAutoPopulatedMsg('');
     try {
       const studentData = await centralApi.lookupStudentByRoll(cleanRoll);
-      if (studentData) {
-        const sName = studentData.studentname || studentData.StudentName || studentData.name || '';
-        const sMobile = studentData.mobilenumber || studentData.MobileNumber || studentData.phone || studentData.mobile || '';
-        const sEmail = studentData.email || studentData.Email || studentData.studentemail || `${cleanRoll.toLowerCase()}@adityauniversity.in`;
-        const sCollege = studentData.college || studentData.College || studentData.collegename || 'Aditya University';
-        const sBranch = studentData.branch || studentData.Branch || studentData.department || '';
+      if (studentData && (studentData.name || studentData.studentname || studentData.rollno)) {
+        const sName = studentData.name || studentData.studentname || '';
+        const sMobile = studentData.mobile || studentData.mobilenumber || '';
+        const sEmail = studentData.email || studentData.emailid || `${cleanRoll.toLowerCase()}@adityauniversity.in`;
+        let sBranch = studentData.branch || '';
+        const sGender = studentData.gender || '';
+        const sSem = studentData.semester || studentData.semestername || '';
+
+        // Normalize branch code: e.g. MEC -> MECH, CIV -> CIVIL, INF -> IT
+        if (sBranch.toUpperCase() === 'MEC') sBranch = 'MECH';
+        else if (sBranch.toUpperCase() === 'CIV') sBranch = 'CIVIL';
+        else if (sBranch.toUpperCase() === 'INF') sBranch = 'IT';
 
         if (sName) setName(sName);
-        if (sMobile) setMobile(String(sMobile).replace(/\D/g, '').slice(0, 10));
-        if (sEmail && !email) setEmail(sEmail.toLowerCase());
+        if (sMobile) setMobile(String(sMobile).replace(/\D/g, '').slice(-10));
+        if (sEmail) setEmail(sEmail.toLowerCase());
         if (sBranch) setBranch(sBranch.toUpperCase());
-        if (sCollege) {
-          if (sCollege.toLowerCase().includes('aditya') && sCollege.toLowerCase().includes('university')) {
-            setCollege('Aditya University');
-          } else if (sCollege.toLowerCase().includes('aec') || sCollege.toLowerCase().includes('engineering college')) {
+
+        // Gender mapping (Male / Female / Other)
+        if (sGender) {
+          const g = String(sGender).trim().toLowerCase();
+          if (g.startsWith('f')) setGender('Female');
+          else if (g.startsWith('m')) setGender('Male');
+          else setGender('Other');
+        }
+
+        // College mapping based on roll number code or college name
+        if (cleanRoll.includes('A9')) {
+          setCollege('AEC');
+        } else if (cleanRoll.includes('P3')) {
+          setCollege('ACET');
+        } else if (cleanRoll.includes('MH') || cleanRoll.includes('B1') || cleanRoll.includes('PT') || cleanRoll.includes('AU')) {
+          setCollege('Aditya University');
+        } else if (studentData.college || studentData.collegename) {
+          const col = String(studentData.college || studentData.collegename).toLowerCase();
+          if (col.includes('aec') || col.includes('aditya engineering college')) {
             setCollege('AEC');
-          } else if (sCollege.toLowerCase().includes('acet')) {
+          } else if (col.includes('acet') || col.includes('technology')) {
             setCollege('ACET');
+          } else if (col.includes('university') || col.includes('aditya')) {
+            setCollege('Aditya University');
           } else {
             setCollege('Other');
-            setOtherCollege(sCollege);
+            setOtherCollege(studentData.college || studentData.collegename);
           }
         }
 
-        setAutoPopulatedMsg(`✓ Profile auto-populated for ${sName || cleanRoll}`);
+        // Year of study mapping (1st Year, 2nd Year, 3rd Year, 4th Year)
+        let detectedYear = '';
+        const semUpper = sSem.toUpperCase();
+        if (semUpper.includes('VII') || semUpper.includes('VIII') || semUpper.includes('4/4') || semUpper.includes('4TH') || semUpper.includes('7') || semUpper.includes('8')) {
+          detectedYear = '4th Year';
+        } else if (semUpper.includes('V') || semUpper.includes('VI') || semUpper.includes('3/4') || semUpper.includes('3RD') || semUpper.includes('5') || semUpper.includes('6')) {
+          detectedYear = '3rd Year';
+        } else if (semUpper.includes('III') || semUpper.includes('IV') || semUpper.includes('2/4') || semUpper.includes('2ND') || semUpper.includes('3') || semUpper.includes('4')) {
+          detectedYear = '2nd Year';
+        } else if (semUpper.includes('I') || semUpper.includes('II') || semUpper.includes('1/4') || semUpper.includes('1ST') || semUpper.includes('1') || semUpper.includes('2')) {
+          detectedYear = '1st Year';
+        } else if (studentData.batch || studentData.joinedbatch) {
+          const b = parseInt(studentData.batch || studentData.joinedbatch, 10);
+          if (b <= 2023) detectedYear = '4th Year';
+          else if (b === 2024) detectedYear = '3rd Year';
+          else if (b === 2025) detectedYear = '2nd Year';
+          else if (b >= 2026) detectedYear = '1st Year';
+        }
+        if (detectedYear) setYear(detectedYear);
+
+        const yearLabel = detectedYear ? `, ${detectedYear}` : '';
+        const branchLabel = sBranch ? ` (${sBranch.toUpperCase()}${yearLabel})` : '';
+        setAutoPopulatedMsg(`✓ Profile auto-populated for ${sName || cleanRoll}${branchLabel}`);
         setError('');
+      } else {
+        if (cleanRoll.length >= 8) {
+          setAutoPopulatedMsg('ℹ Roll not found in ECAP. You can enter details manually.');
+        }
       }
     } catch (err) {
       console.warn('Auto-populate lookup error:', err);
@@ -92,9 +141,10 @@ export default function StudentLoginModal({ isOpen, onClose, onLoginSuccess, ini
     // Trigger auto-population with debounce
     if (cleaned.length >= 6) {
       clearTimeout(window._vedaLoginRollLookupTimer);
+      const delay = cleaned.length >= 10 ? 300 : 500;
       window._vedaLoginRollLookupTimer = setTimeout(() => {
         autoPopulateFromRoll(cleaned);
-      }, 450);
+      }, delay);
     }
   };
 
@@ -412,15 +462,24 @@ export default function StudentLoginModal({ isOpen, onClose, onLoginSuccess, ini
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
                 <div>
                   <label style={labelStyle}>Roll Number</label>
-                  <div style={{ position: 'relative' }}>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                     <input
                       type="text"
                       value={roll}
                       onChange={(e) => handleRollChange(e.target.value)}
                       onBlur={() => roll.length >= 5 && autoPopulateFromRoll(roll)}
-                      placeholder="Enter Roll Number (e.g. 22A91A0501)"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          autoPopulateFromRoll(roll);
+                        }
+                      }}
+                      placeholder="Enter Roll Number (e.g. 19A91A0341)"
                       required
-                      style={inputStyle}
+                      style={{
+                        ...inputStyle,
+                        paddingRight: lookupLoading ? '40px' : (roll.length >= 6 ? '78px' : '14px')
+                      }}
                       onFocus={(e) => {
                         e.target.style.borderColor = '#0284c7';
                         e.target.style.boxShadow = '0 0 0 3px rgba(2, 132, 199, 0.12)';
@@ -430,12 +489,41 @@ export default function StudentLoginModal({ isOpen, onClose, onLoginSuccess, ini
                         e.target.style.boxShadow = 'none';
                       }}
                     />
-                    {lookupLoading && (
+                    {lookupLoading ? (
                       <Loader2
                         size={16}
                         className="animate-spin"
-                        style={{ position: 'absolute', right: '12px', top: '12px', color: '#0284c7' }}
+                        style={{ position: 'absolute', right: '12px', color: '#0284c7' }}
                       />
+                    ) : (
+                      roll.length >= 6 && (
+                        <button
+                          type="button"
+                          onClick={() => autoPopulateFromRoll(roll)}
+                          style={{
+                            position: 'absolute',
+                            right: '6px',
+                            background: '#eff6ff',
+                            color: '#0284c7',
+                            border: '1px solid #bfdbfe',
+                            borderRadius: '6px',
+                            padding: '4px 8px',
+                            fontSize: '0.75rem',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'all 0.15s'
+                          }}
+                          onMouseOver={(e) => (e.currentTarget.style.background = '#dbeafe')}
+                          onMouseOut={(e) => (e.currentTarget.style.background = '#eff6ff')}
+                          title="Click to fetch student details from ECAP"
+                        >
+                          <Sparkles size={12} />
+                          Fetch
+                        </button>
+                      )
                     )}
                   </div>
                 </div>

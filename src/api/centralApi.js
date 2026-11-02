@@ -274,25 +274,45 @@ export const centralApi = {
   /**
    * Auto-populate Student Details from Aditya ECAP API
    * Endpoint: https://info.aec.edu.in/adityaapi/api/studentdata/{rollNo}
-   * Fetches API Key from .env (VITE_STUDENT_API_KEY)
+   * Uses VITE_ECAP_API_KEY / VITE_STUDENT_API_KEY from .env
    */
   async lookupStudentByRoll(rollNo) {
     if (!rollNo) return null;
     const cleanRoll = String(rollNo).trim().toUpperCase();
     if (cleanRoll.length < 5) return null;
 
-    const apiKey = import.meta.env.VITE_STUDENT_API_KEY || '4T4K65HWxqKD90AEZoCZLqA+m3nq6JvwDRDHIJUBFc4=';
-    const apiUrl = import.meta.env.VITE_STUDENT_DATA_API_URL || 'https://info.aec.edu.in/adityaapi/api/studentdata';
+    const apiKey = import.meta.env.VITE_ECAP_API_KEY || import.meta.env.VITE_STUDENT_API_KEY;
+    const apiUrl = import.meta.env.VITE_STUDENT_DATA_URL || import.meta.env.VITE_STUDENT_DATA_API_URL;
 
     const headers = {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
+      'Accept': 'application/json'
     };
     if (apiKey) {
-      headers['apiKey'] = apiKey;
-      headers['X-API-Key'] = apiKey;
-      headers['x-api-key'] = apiKey;
+      headers['X-API-KEY'] = apiKey;
     }
+
+    const normalizeStudent = (raw) => {
+      if (!raw || typeof raw !== 'object') return null;
+      if (raw.Message || raw.error) return null;
+      return {
+        ...raw,
+        roll: raw.rollno || raw.rollNumber || raw.roll || cleanRoll,
+        rollno: raw.rollno || raw.rollNumber || raw.roll || cleanRoll,
+        name: raw.studentname || raw.StudentName || raw.name || '',
+        studentname: raw.studentname || raw.StudentName || raw.name || '',
+        email: raw.emailid || raw.email || raw.Email || raw.studentemail || '',
+        emailid: raw.emailid || raw.email || raw.Email || raw.studentemail || '',
+        mobile: raw.mobilenumber || raw.MobileNumber || raw.phone || raw.mobile || '',
+        mobilenumber: raw.mobilenumber || raw.MobileNumber || raw.phone || raw.mobile || '',
+        branch: raw.branch || raw.Branch || raw.department || '',
+        gender: raw.gender || raw.Gender || '',
+        semester: raw.semestername || raw.Semester || raw.semester || '',
+        semestername: raw.semestername || raw.Semester || raw.semester || '',
+        batch: raw.joinedbatch || raw.acadamicbatch || '',
+        joinedbatch: raw.joinedbatch || raw.acadamicbatch || '',
+        college: raw.college || raw.College || raw.collegename || ''
+      };
+    };
 
     // Attempt 1: Proxied request via Vite dev server
     try {
@@ -301,30 +321,33 @@ export const centralApi = {
       if (response.ok) {
         const data = await response.json();
         if (Array.isArray(data) && data.length > 0) {
-          return data[0];
-        }
-        if (data && typeof data === 'object' && !data.error) {
-          return data;
+          const norm = normalizeStudent(data[0]);
+          if (norm) return norm;
+        } else if (data && typeof data === 'object') {
+          const norm = normalizeStudent(data);
+          if (norm) return norm;
         }
       }
     } catch (err) {
-      // fallback
+      console.warn('Proxy student lookup attempt failed:', err.message);
     }
 
     // Attempt 2: Direct call to full apiUrl configured in .env
     try {
-      const response = await fetch(`${apiUrl.replace(/\/+$/, '')}/${encodeURIComponent(cleanRoll)}`, { headers });
+      const directUrl = `${apiUrl.replace(/\/+$/, '')}/${encodeURIComponent(cleanRoll)}`;
+      const response = await fetch(directUrl, { headers });
       if (response.ok) {
         const data = await response.json();
         if (Array.isArray(data) && data.length > 0) {
-          return data[0];
-        }
-        if (data && typeof data === 'object' && !data.error) {
-          return data;
+          const norm = normalizeStudent(data[0]);
+          if (norm) return norm;
+        } else if (data && typeof data === 'object') {
+          const norm = normalizeStudent(data);
+          if (norm) return norm;
         }
       }
     } catch (err) {
-      // fallback
+      // CORS might block in browser, handled by fallback
     }
 
     // Attempt 3: Backend proxy fallback
@@ -333,7 +356,7 @@ export const centralApi = {
       if (response.ok) {
         const data = await response.json();
         if (Array.isArray(data) && data.length > 0) {
-          return data[0];
+          return normalizeStudent(data[0]);
         }
       }
     } catch (err) {

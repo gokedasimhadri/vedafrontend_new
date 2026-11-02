@@ -22,6 +22,9 @@ export default defineConfig(({ mode }) => {
           target: 'https://info.aec.edu.in',
           changeOrigin: true,
           secure: false,
+          headers: {
+            'X-API-KEY': env.VITE_ECAP_API_KEY
+          }
         },
         '/uploads': {
           target: backendUrl,

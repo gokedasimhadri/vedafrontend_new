@@ -99,9 +99,19 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
       if (studentData) {
         const sName = studentData.studentname || studentData.StudentName || studentData.name || '';
         const sMobile = studentData.mobilenumber || studentData.MobileNumber || studentData.phone || studentData.mobile || '';
-        const sEmail = studentData.email || studentData.Email || studentData.studentemail || `${cleanRoll.toLowerCase()}@adityauniversity.in`;
-        const sCollege = studentData.college || studentData.College || studentData.collegename || 'Aditya University';
+        const sEmail = studentData.email || studentData.emailid || studentData.Email || studentData.studentemail || `${cleanRoll.toLowerCase()}@adityauniversity.in`;
+        let sCollege = studentData.college || studentData.College || studentData.collegename || 'Aditya University';
+        if (cleanRoll.includes('A9')) sCollege = 'AEC';
+        else if (cleanRoll.includes('P3')) sCollege = 'ACET';
+        else if (cleanRoll.includes('MH') || cleanRoll.includes('B1') || cleanRoll.includes('PT') || cleanRoll.includes('AU')) sCollege = 'Aditya University';
+
         const sBranch = studentData.branch || studentData.Branch || studentData.department || '';
+        let sYear = '';
+        const sSem = (studentData.semester || studentData.semestername || '').toUpperCase();
+        if (sSem.includes('VII') || sSem.includes('VIII') || sSem.includes('4/4') || sSem.includes('4TH')) sYear = '4th Year';
+        else if (sSem.includes('V') || sSem.includes('VI') || sSem.includes('3/4') || sSem.includes('3RD')) sYear = '3rd Year';
+        else if (sSem.includes('III') || sSem.includes('IV') || sSem.includes('2/4') || sSem.includes('2ND')) sYear = '2nd Year';
+        else if (sSem.includes('I') || sSem.includes('II') || sSem.includes('1/4') || sSem.includes('1ST')) sYear = '1st Year';
 
         setParticipants(prev => {
           const updated = [...prev];
@@ -110,9 +120,10 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
               ...updated[index],
               rollNumber: cleanRoll,
               name: sName || updated[index].name,
-              phone: sMobile ? String(sMobile).replace(/\D/g, '').slice(0, 10) : updated[index].phone,
+              phone: sMobile ? String(sMobile).replace(/\D/g, '').slice(-10) : updated[index].phone,
               email: sEmail || updated[index].email,
               college: sCollege || updated[index].college,
+              year: sYear || updated[index].year,
               department: mapBranchToDepartment(sBranch) || updated[index].department
             };
           }
