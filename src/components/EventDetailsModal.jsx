@@ -1,10 +1,34 @@
 import React, { useState } from 'react';
 import { X, Trophy, CheckCircle2, ShieldAlert, Phone, Mail, User, Calendar, MapPin, Users, ArrowRight } from 'lucide-react';
+import { isEventRegisteredByStudent } from '../api/centralApi';
 
-export default function EventDetailsModal({ event, onClose, onRegister, committeeMembers = [] }) {
+export default function EventDetailsModal({
+  event,
+  onClose,
+  onRegister,
+  onMyPassesClick,
+  userRegistrations = [],
+  isRegistered: propIsRegistered,
+  committeeMembers = []
+}) {
   const [activeTab, setActiveTab] = useState('rules');
 
   if (!event) return null;
+
+  const effectiveRegistrations = Array.isArray(userRegistrations) && userRegistrations.length > 0
+    ? userRegistrations
+    : (() => {
+        try {
+          const raw = localStorage.getItem('veda_student_registrations');
+          return raw ? JSON.parse(raw) : [];
+        } catch {
+          return [];
+        }
+      })();
+
+  const isRegistered = propIsRegistered !== undefined
+    ? Boolean(propIsRegistered)
+    : isEventRegisteredByStudent(event, effectiveRegistrations);
 
   // Normalize fee
   const feeAmount = event.fee?.amountPerUnit !== undefined
@@ -255,38 +279,76 @@ export default function EventDetailsModal({ event, onClose, onRegister, committe
               </div>
             </div>
 
-            <button
-              onClick={() => {
-                onClose();
-                onRegister(event);
-              }}
-              style={{
-                background: 'linear-gradient(135deg, #071830 0%, #0284c7 100%)',
-                color: '#ffffff',
-                padding: '12px 28px',
-                borderRadius: '9999px',
-                fontSize: '0.96rem',
-                fontWeight: '800',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                boxShadow: '0 4px 16px rgba(2, 132, 199, 0.35)',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 24px rgba(2, 132, 199, 0.5)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 16px rgba(2, 132, 199, 0.35)';
-              }}
-            >
-              <span>Register for Event</span>
-              <ArrowRight size={18} />
-            </button>
+            {isRegistered ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onMyPassesClick && onMyPassesClick();
+                }}
+                style={{
+                  background: '#dcfce7',
+                  color: '#15803d',
+                  padding: '12px 28px',
+                  borderRadius: '9999px',
+                  fontSize: '0.96rem',
+                  fontWeight: '800',
+                  border: '1.5px solid #86efac',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 14px rgba(22, 163, 74, 0.2)',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = '#bbf7d0';
+                  e.currentTarget.style.borderColor = '#4ade80';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = '#dcfce7';
+                  e.currentTarget.style.borderColor = '#86efac';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <CheckCircle2 size={18} color="#15803d" />
+                <span>Already Registered • View Pass</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  onClose();
+                  onRegister(event);
+                }}
+                style={{
+                  background: 'linear-gradient(135deg, #071830 0%, #0284c7 100%)',
+                  color: '#ffffff',
+                  padding: '12px 28px',
+                  borderRadius: '9999px',
+                  fontSize: '0.96rem',
+                  fontWeight: '800',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 16px rgba(2, 132, 199, 0.35)',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(2, 132, 199, 0.5)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(2, 132, 199, 0.35)';
+                }}
+              >
+                <span>Register for Event</span>
+                <ArrowRight size={18} />
+              </button>
+            )}
           </div>
         </div>
       </div>

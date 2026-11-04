@@ -20,24 +20,57 @@ import {
   AlertCircle,
   Printer
 } from 'lucide-react';
-import { centralApi } from '../api/centralApi';
+import {
+  centralApi,
+  isRealRazorpayOrderId,
+  isEventRegisteredByStudent,
+  matchBranchToDepartment
+} from '../api/centralApi';
 
-function mapBranchToDepartment(branchStr) {
-  if (!branchStr) return 'CSE';
-  const b = branchStr.toUpperCase();
-  if (b.includes('CS') || b.includes('AI') || b.includes('DATA') || b.includes('ML') || b.includes('COMPUT')) return 'CSE';
-  if (b.includes('IT') || b.includes('INFO')) return 'IT';
-  if (b.includes('EC') || b.includes('COMMUN')) return 'ECE';
-  if (b.includes('EE') || b.includes('ELECTR')) return 'EEE';
-  if (b.includes('ME') || b.includes('ROBOT')) return 'MECH';
-  if (b.includes('CIVIL')) return 'CIVIL';
-  if (b.includes('AGRI')) return 'AGRI';
-  if (b.includes('PHARM') || b.includes('MGMT') || b.includes('MBA') || b.includes('BBA')) return 'PHARMACY';
-  return 'CSE';
-}
-
-export default function RegistrationModal({ event, onClose, currentUser, onRequestLogin, onSuccess }) {
+export default function RegistrationModal({
+  event,
+  onClose,
+  currentUser,
+  onRequestLogin,
+  onSuccess,
+  userRegistrations = []
+}) {
   const [loading, setLoading] = useState(false);
+  const [departmentsList, setDepartmentsList] = useState([]);
+  const [departmentsLoading, setDepartmentsLoading] = useState(true);
+
+  // Load active event departments directly from eventdepartments collection
+  useEffect(() => {
+    let isMounted = true;
+    centralApi.getEventDepartments()
+      .then(depts => {
+        if (isMounted && Array.isArray(depts)) {
+          setDepartmentsList(depts);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to load event departments from collection:', err);
+      })
+      .finally(() => {
+        if (isMounted) setDepartmentsLoading(false);
+      });
+    return () => { isMounted = false; };
+  }, []);
+
+  const lookupTimeouts = React.useRef({});
+
+  const effectiveRegistrations = Array.isArray(userRegistrations) && userRegistrations.length > 0
+    ? userRegistrations
+    : (() => {
+        try {
+          const raw = localStorage.getItem('veda_student_registrations');
+          return raw ? JSON.parse(raw) : [];
+        } catch {
+          return [];
+        }
+      })();
+
+  const isAlreadyRegistered = isEventRegisteredByStudent(event, effectiveRegistrations);
   const [currentStep, setCurrentStep] = useState(2); // Step 2 (Form) -> Step 3 (Review & Payment)
   const [successData, setSuccessData] = useState(null);
   const [pendingPayment, setPendingPayment] = useState(null);
@@ -53,14 +86,25 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
   // Form State
   const [teamName, setTeamName] = useState('');
   const [participants, setParticipants] = useState(() => {
+    const cleanRoll = (currentUser?.roll || currentUser?.rollNumber || '').toUpperCase();
+    let col = currentUser?.college || '';
+    if (!col) {
+      if (cleanRoll.includes('A9')) col = 'AEC';
+      else if (cleanRoll.includes('P3')) col = 'ACET';
+      else col = 'Aditya University';
+    }
+
     const lead = {
+      rollNumber: cleanRoll,
       name: currentUser?.name || '',
-      rollNumber: (currentUser?.roll || currentUser?.rollNumber || '').toUpperCase(),
-      email: currentUser?.email || '',
+      college: col,
+      gender: currentUser?.gender || 'Male',
       phone: currentUser?.mobile || currentUser?.phone || '',
-      college: currentUser?.college || 'Aditya University',
-      department: currentUser?.branch || currentUser?.department || 'CSE',
-      year: currentUser?.year || '3rd Year',
+      email: currentUser?.email || '',
+      year: currentUser?.year || 'Select',
+      department: currentUser?.department || 'Select',
+      branch: currentUser?.branch || '',
+      location: currentUser?.location || '',
       isLead: true
     };
 
@@ -68,13 +112,16 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
       const initialList = [lead];
       for (let i = 1; i < minTeamSize; i++) {
         initialList.push({
-          name: '',
           rollNumber: '',
-          email: '',
-          phone: '',
+          name: '',
           college: lead.college,
-          department: lead.department,
-          year: lead.year,
+          gender: 'Select',
+          phone: '',
+          email: '',
+          year: 'Select',
+          department: 'Select',
+          branch: '',
+          location: '',
           isLead: false
         });
       }
@@ -100,18 +147,31 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
         const sName = studentData.studentname || studentData.StudentName || studentData.name || '';
         const sMobile = studentData.mobilenumber || studentData.MobileNumber || studentData.phone || studentData.mobile || '';
         const sEmail = studentData.email || studentData.emailid || studentData.Email || studentData.studentemail || `${cleanRoll.toLowerCase()}@adityauniversity.in`;
-        let sCollege = studentData.college || studentData.College || studentData.collegename || 'Aditya University';
-        if (cleanRoll.includes('A9')) sCollege = 'AEC';
-        else if (cleanRoll.includes('P3')) sCollege = 'ACET';
-        else if (cleanRoll.includes('MH') || cleanRoll.includes('B1') || cleanRoll.includes('PT') || cleanRoll.includes('AU')) sCollege = 'Aditya University';
+        let sCollege = studentData.college || studentData.College || studentData.collegename || '';
+        if (!sCollege) {
+          if (cleanRoll.includes('A9')) sCollege = 'AEC';
+          else if (cleanRoll.includes('P3')) sCollege = 'ACET';
+          else sCollege = 'Aditya University';
+        }
 
-        const sBranch = studentData.branch || studentData.Branch || studentData.department || '';
-        let sYear = '';
-        const sSem = (studentData.semester || studentData.semestername || '').toUpperCase();
-        if (sSem.includes('VII') || sSem.includes('VIII') || sSem.includes('4/4') || sSem.includes('4TH')) sYear = '4th Year';
-        else if (sSem.includes('V') || sSem.includes('VI') || sSem.includes('3/4') || sSem.includes('3RD')) sYear = '3rd Year';
-        else if (sSem.includes('III') || sSem.includes('IV') || sSem.includes('2/4') || sSem.includes('2ND')) sYear = '2nd Year';
-        else if (sSem.includes('I') || sSem.includes('II') || sSem.includes('1/4') || sSem.includes('1ST')) sYear = '1st Year';
+        let sGender = studentData.gender || studentData.Gender || 'Male';
+        if (sGender.toUpperCase() === 'M' || sGender.toUpperCase() === 'MALE') sGender = 'Male';
+        else if (sGender.toUpperCase() === 'F' || sGender.toUpperCase() === 'FEMALE') sGender = 'Female';
+
+        const sBranch = String(studentData.branch || studentData.Branch || '').trim();
+        let sYear = studentData.year || '';
+        if (!sYear || sYear === 'Select') {
+          const sSem = String(studentData.semester || studentData.semestername || '').toUpperCase();
+          if (sSem.includes('VIII') || sSem.includes('VII') || sSem.includes('4/4') || sSem.includes('4TH')) sYear = '4th Year';
+          else if (sSem.includes('VI') || sSem.includes('V') || sSem.includes('3/4') || sSem.includes('3RD')) sYear = '3rd Year';
+          else if (sSem.includes('IV') || sSem.includes('III') || sSem.includes('2/4') || sSem.includes('2ND')) sYear = '2nd Year';
+          else if (sSem.includes('II') || sSem.includes('I') || sSem.includes('1/4') || sSem.includes('1ST')) sYear = '1st Year';
+          else sYear = 'Select';
+        }
+
+        const sLocation = studentData.location || '';
+        // Automatically match branch against department name & alternative names from backend!
+        const matchedDept = matchBranchToDepartment(sBranch, departmentsList) || 'Select';
 
         setParticipants(prev => {
           const updated = [...prev];
@@ -120,11 +180,14 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
               ...updated[index],
               rollNumber: cleanRoll,
               name: sName || updated[index].name,
+              college: sCollege,
+              gender: sGender,
               phone: sMobile ? String(sMobile).replace(/\D/g, '').slice(-10) : updated[index].phone,
               email: sEmail || updated[index].email,
-              college: sCollege || updated[index].college,
-              year: sYear || updated[index].year,
-              department: mapBranchToDepartment(sBranch) || updated[index].department
+              year: sYear,
+              branch: sBranch || updated[index].branch,
+              location: sLocation || updated[index].location,
+              department: matchedDept !== 'Select' ? matchedDept : updated[index].department
             };
           }
           return updated;
@@ -132,7 +195,7 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
 
         setErrors(prev => {
           const nextErr = { ...prev };
-          delete nextErr[`roll_${index}`];
+          delete nextErr[`rollNumber_${index}`];
           if (sName) delete nextErr[`name_${index}`];
           if (sMobile) delete nextErr[`phone_${index}`];
           if (sEmail) delete nextErr[`email_${index}`];
@@ -140,7 +203,7 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
         });
 
         if (index === 0) {
-          setAutoPopulatedMsg(`✓ Profile auto-filled for ${sName || cleanRoll}`);
+          setAutoPopulatedMsg(`✓ Profile auto-filled for ${sName || cleanRoll} (${matchedDept !== 'Select' ? matchedDept : sBranch})`);
         }
       }
     } catch (err) {
@@ -150,12 +213,27 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
     }
   };
 
-  // If lead participant has roll number but missing details, auto-fill once on mount
+  // If lead participant has roll number on mount, auto-populate all details
   useEffect(() => {
-    if (participants[0]?.rollNumber && participants[0].rollNumber.length >= 6 && !participants[0].name) {
+    if (participants[0]?.rollNumber && participants[0].rollNumber.length >= 5) {
       autoPopulateParticipant(0, participants[0].rollNumber);
     }
-  }, []);
+  }, [departmentsList]);
+
+  // When departments are loaded from eventdepartments collection, auto-match departments for any participant with branch
+  useEffect(() => {
+    if (departmentsList.length > 0) {
+      setParticipants(prev => prev.map(p => {
+        if (p.branch && (!p.department || p.department === 'Select')) {
+          const autoDept = matchBranchToDepartment(p.branch, departmentsList);
+          if (autoDept && autoDept !== 'Select') {
+            return { ...p, department: autoDept };
+          }
+        }
+        return p;
+      }));
+    }
+  }, [departmentsList]);
 
   const handleParticipantChange = (index, field, value) => {
     const updated = [...participants];
@@ -164,11 +242,11 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
     if (field === 'rollNumber') {
       const cleanRoll = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);
       updated[index][field] = cleanRoll;
-      if (cleanRoll.length >= 6) {
-        clearTimeout(window[`_regRollTimer_${index}`]);
-        window[`_regRollTimer_${index}`] = setTimeout(() => {
+      if (cleanRoll.length >= 5) {
+        clearTimeout(lookupTimeouts.current[index]);
+        lookupTimeouts.current[index] = setTimeout(() => {
           autoPopulateParticipant(index, cleanRoll);
-        }, 400);
+        }, 500);
       }
     } else if (field === 'name') {
       updated[index][field] = value.replace(/[^a-zA-Z\s.]/g, '').slice(0, 60);
@@ -176,6 +254,12 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
       updated[index][field] = value.replace(/\D/g, '').slice(0, 10);
     } else if (field === 'email') {
       updated[index][field] = value.trim();
+    } else if (field === 'branch') {
+      updated[index][field] = value;
+      const autoDept = matchBranchToDepartment(value, departmentsList);
+      if (autoDept && autoDept !== 'Select') {
+        updated[index].department = autoDept;
+      }
     } else {
       updated[index][field] = value;
     }
@@ -200,13 +284,16 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
       const additional = [];
       for (let i = 0; i < needed; i++) {
         additional.push({
-          name: '',
           rollNumber: '',
-          email: '',
+          name: '',
+          college: participants[0]?.college || 'ACET',
+          gender: 'Select',
           phone: '',
-          college: participants[0]?.college || 'Aditya University',
-          department: participants[0]?.department || 'CSE',
-          year: participants[0]?.year || '3rd Year',
+          email: '',
+          year: 'Select',
+          department: 'Select',
+          branch: '',
+          location: '',
           isLead: false
         });
       }
@@ -299,15 +386,20 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
         phone: m.phone ? m.phone.trim() : '',
         email: m.email ? m.email.trim() : '',
         college: m.college || lead.college,
+        gender: m.gender || 'Male',
         department: m.department || lead.department,
-        year: m.year || lead.year
+        branch: m.branch || '',
+        year: m.year || lead.year,
+        location: m.location || ''
       }));
 
       const payload = {
         eventId: event?._id,
         eventSlug: event?.slug,
         eventTitle: event?.title,
-        typeCode: 'VEDA',
+        typeCode: (import.meta.env.VITE_EVENT_TYPE || import.meta.env.EVENT_TYPE || event?.typeCode || 'VEDA').toUpperCase(),
+        academicYear: import.meta.env.VITE_EVENT_ACADEMIC_YEAR || import.meta.env.EVENT_ACADEMIC_YEAR || event?.academicYear || '2026-2027',
+        academic_year: import.meta.env.VITE_EVENT_ACADEMIC_YEAR || import.meta.env.EVENT_ACADEMIC_YEAR || event?.academic_year || '2026-2027',
         studentAccountId: currentUser?._id || null,
         teamSize: participants.length,
         teamName: isTeam ? teamName.trim() : null,
@@ -318,8 +410,11 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
           email: p.email ? p.email.trim() : '',
           phone: p.phone ? p.phone.trim() : '',
           college: p.college || lead.college,
+          gender: p.gender || 'Male',
           department: p.department || lead.department,
+          branch: p.branch || '',
           year: p.year || lead.year,
+          location: p.location || '',
           isLead: !!p.isLead
         })),
         participant: {
@@ -327,9 +422,12 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
           rollNumber: lead.rollNumber.trim().toUpperCase(),
           email: lead.email.trim().toLowerCase(),
           phone: lead.phone.trim(),
-          college: lead.college || 'Aditya University',
-          department: lead.department || 'CSE',
-          year: lead.year || '3rd Year'
+          college: lead.college || 'ACET',
+          gender: lead.gender || 'Male',
+          department: lead.department || 'Select',
+          branch: lead.branch || '',
+          year: lead.year || 'Select',
+          location: lead.location || ''
         },
         teamMembers: additionalMembers,
         fee: event?.fee
@@ -364,14 +462,16 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
     }
 
     const lead = participants[0];
+    const isRealOrderId = isRealRazorpayOrderId(order?.id);
+
     const options = {
-      key: order.keyId,
-      amount: order.amount,
-      currency: order.currency || 'INR',
+      key: order?.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID,
+      amount: order?.amount || 100,
+      currency: order?.currency || 'INR',
       name: 'Aditya University - VEDA 2k26',
       description: `Registration Fee: ${event?.title || 'Event'} (${participants.length} Participants)`,
-      order_id: order.id,
-      image: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAA',
+      ...(isRealOrderId ? { order_id: order.id } : {}),
+      image: 'https://info.aec.edu.in/favicon.ico',
       prefill: {
         name: lead.name,
         email: lead.email,
@@ -386,6 +486,8 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
           // Save payment data into central_event_student_payments collection
           const verifyRes = await centralApi.verifyRegistrationPayment({
             registrationId: registration._id,
+            registrationNumber: registration.registrationNumber,
+            paymentReference: registration.paymentReference || `PAY-${registration.registrationNumber}`,
             razorpayOrderId: paymentResponse.razorpay_order_id,
             razorpayPaymentId: paymentResponse.razorpay_payment_id,
             razorpaySignature: paymentResponse.razorpay_signature
@@ -413,7 +515,11 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
 
     const rzp = new window.Razorpay(options);
     rzp.on('payment.failed', function (failResp) {
-      alert(`Payment failed: ${failResp.error?.description || 'Transaction unsuccessful'}`);
+      console.warn('Payment notice:', failResp);
+      const desc = failResp.error?.description;
+      if (desc && desc !== 'Payment failed' && !desc.toLowerCase().includes('cancel')) {
+        alert(`Payment notice: ${desc}`);
+      }
       setLoading(false);
     });
     rzp.open();
@@ -424,7 +530,7 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
       <div
         className="veda-modal-content"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: currentStep === 3 && !successData ? '720px' : '680px', maxHeight: '92vh', overflowY: 'auto' }}
+        style={{ maxWidth: '940px', width: '95%', maxHeight: '92vh', overflowY: 'auto' }}
       >
         {/* Modal Header */}
         <div style={{
@@ -567,7 +673,60 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
 
         {/* Modal Body */}
         <div className="modal-body-pad" style={{ padding: '24px' }}>
-          {successData ? (
+          {isAlreadyRegistered ? (
+            <div style={{ textAlign: 'center', padding: '24px 12px' }}>
+              <div style={{
+                width: '68px',
+                height: '68px',
+                borderRadius: '50%',
+                background: '#dcfce7',
+                border: '2px solid #86efac',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+                color: '#15803d',
+                boxShadow: '0 4px 16px rgba(22, 163, 74, 0.2)'
+              }}>
+                <CheckCircle2 size={36} />
+              </div>
+              <h3 style={{ fontSize: '1.4rem', fontWeight: '900', color: '#0f172a', margin: '0 0 8px' }}>
+                Already Registered!
+              </h3>
+              <p style={{ color: '#475569', fontSize: '0.95rem', maxWidth: '440px', margin: '0 auto 24px', lineHeight: 1.6 }}>
+                You have already registered for <strong>{event?.title}</strong>. Your pass and details are safely stored in your account.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onSuccess && onSuccess();
+                  }}
+                  className="btn-primary"
+                  style={{ padding: '11px 26px', borderRadius: '9999px', fontSize: '0.92rem', fontWeight: '800' }}
+                >
+                  View My Passes
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  style={{
+                    background: 'transparent',
+                    border: '1.5px solid #cbd5e1',
+                    color: '#475569',
+                    padding: '11px 22px',
+                    borderRadius: '9999px',
+                    fontSize: '0.92rem',
+                    fontWeight: '700',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          ) : successData ? (
             /* ==============================================================
                SUCCESS / CONFIRMED PASS SCREEN (With full participants list)
                ============================================================== */
@@ -834,13 +993,22 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px', fontSize: '0.8rem', color: '#64748b' }}>
                       <div>
-                        Department: <strong style={{ color: '#334155' }}>{p.department || 'CSE'}</strong>
+                        College: <strong style={{ color: '#334155' }}>{p.college || '—'}</strong>
                       </div>
-                      {p.year && (
+                      <div>
+                        Gender: <strong style={{ color: '#334155' }}>{p.gender || '—'}</strong>
+                      </div>
+                      <div>
+                        Department: <strong style={{ color: '#0284c7' }}>{p.department || '—'}</strong>
+                      </div>
+                      {p.branch && (
                         <div>
-                          Year: <strong style={{ color: '#334155' }}>{p.year}</strong>
+                          Branch: <strong style={{ color: '#334155' }}>{p.branch}</strong>
                         </div>
                       )}
+                      <div>
+                        Year of study: <strong style={{ color: '#334155' }}>{p.year || '—'}</strong>
+                      </div>
                       {p.phone && (
                         <div>
                           Mobile: <strong style={{ color: '#334155' }}>{p.phone}</strong>
@@ -849,6 +1017,11 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
                       {p.email && (
                         <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           Email: <strong style={{ color: '#334155' }}>{p.email}</strong>
+                        </div>
+                      )}
+                      {p.location && (
+                        <div style={{ gridColumn: '1 / -1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          Location: <strong style={{ color: '#334155' }}>{p.location}</strong>
                         </div>
                       )}
                     </div>
@@ -974,7 +1147,7 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
                     <input
                       type="text"
                       required
-                      placeholder="e.g. CodeCraft / Innovators"
+                      placeholder="Team Name"
                       className={`form-control ${errors.teamName ? 'is-invalid' : ''}`}
                       value={teamName}
                       onChange={(e) => {
@@ -1049,121 +1222,345 @@ export default function RegistrationModal({ event, onClose, currentUser, onReque
                         )}
                       </div>
 
-                      {/* Participant Fields Grid */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '12px', marginBottom: '12px' }}>
-                        {/* Roll Number with Auto-fill */}
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                            <label className="form-label" style={{ marginBottom: 0 }}>Roll Number *</label>
-                            <button
-                              type="button"
-                              onClick={() => autoPopulateParticipant(index, p.rollNumber)}
-                              disabled={isLookingUp}
-                              style={{
-                                background: 'rgba(2, 132, 199, 0.08)',
-                                border: '1px solid rgba(2, 132, 199, 0.2)',
-                                borderRadius: '4px',
-                                padding: '2px 6px',
-                                fontSize: '0.7rem',
-                                color: '#0284c7',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '3px',
-                                cursor: 'pointer',
-                                fontWeight: '700'
-                              }}
-                            >
-                              <Sparkles size={11} /> Auto-fill
-                            </button>
-                          </div>
-                          <div style={{ position: 'relative' }}>
-                            <input
-                              type="text"
-                              required
-                              placeholder="e.g. 24B11PT019"
-                              className={`form-control ${errors[`rollNumber_${index}`] ? 'is-invalid' : ''}`}
-                              value={p.rollNumber}
-                              onChange={(e) => handleParticipantChange(index, 'rollNumber', e.target.value)}
-                              onBlur={() => autoPopulateParticipant(index, p.rollNumber)}
-                              style={{ textTransform: 'uppercase', fontWeight: '700' }}
-                            />
-                            {isLookingUp && (
-                              <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#0284c7' }}>
-                                <Loader2 size={16} className="animate-spin" />
+                      {/* Participant Fields Grid (Matching Reference Image 1 Layout) */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {/* Row 1: Roll Number | Name | College | Gender */}
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                          gap: '16px'
+                        }}>
+                          {/* Roll Number */}
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                              <label style={{ fontSize: '0.86rem', fontWeight: '700', color: '#0f172a', margin: 0 }}>
+                                Roll Number
+                              </label>
+                              {isLookingUp && (
+                                <span style={{ fontSize: '0.72rem', color: '#0284c7', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '700' }}>
+                                  <Loader2 size={12} className="animate-spin" /> Fetching...
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ position: 'relative' }}>
+                              <input
+                                type="text"
+                                required
+                                placeholder="Roll Number"
+                                value={p.rollNumber}
+                                onChange={(e) => handleParticipantChange(index, 'rollNumber', e.target.value)}
+                                onBlur={(e) => {
+                                  if (e.target.value && e.target.value.length >= 5) {
+                                    autoPopulateParticipant(index, e.target.value);
+                                  }
+                                }}
+                                style={{
+                                  width: '100%',
+                                  height: '42px',
+                                  padding: '8px 12px',
+                                  background: '#f8fafc',
+                                  border: errors[`rollNumber_${index}`] ? '1.5px solid #ef4444' : '1px solid #e2e8f0',
+                                  borderRadius: '8px',
+                                  fontSize: '0.88rem',
+                                  fontWeight: '700',
+                                  color: '#0f172a',
+                                  textTransform: 'uppercase',
+                                  outline: 'none',
+                                  boxSizing: 'border-box'
+                                }}
+                              />
+                            </div>
+                            {errors[`rollNumber_${index}`] && (
+                              <div style={{ color: '#ef4444', fontSize: '0.74rem', marginTop: '4px' }}>
+                                {errors[`rollNumber_${index}`]}
                               </div>
                             )}
                           </div>
-                          {errors[`rollNumber_${index}`] && <div className="form-error-msg">{errors[`rollNumber_${index}`]}</div>}
+
+                          {/* Name */}
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ display: 'block', fontSize: '0.86rem', fontWeight: '700', color: '#0f172a', marginBottom: '6px' }}>
+                              Name
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Name"
+                              value={p.name}
+                              onChange={(e) => handleParticipantChange(index, 'name', e.target.value)}
+                              style={{
+                                width: '100%',
+                                height: '42px',
+                                padding: '8px 12px',
+                                background: '#f8fafc',
+                                border: errors[`name_${index}`] ? '1.5px solid #ef4444' : '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '0.88rem',
+                                fontWeight: '600',
+                                color: '#0f172a',
+                                outline: 'none',
+                                boxSizing: 'border-box'
+                              }}
+                            />
+                            {errors[`name_${index}`] && (
+                              <div style={{ color: '#ef4444', fontSize: '0.74rem', marginTop: '4px' }}>
+                                {errors[`name_${index}`]}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* College */}
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ display: 'block', fontSize: '0.86rem', fontWeight: '700', color: '#0f172a', marginBottom: '6px' }}>
+                              College
+                            </label>
+                            <select
+                              value={p.college || 'ACET'}
+                              onChange={(e) => handleParticipantChange(index, 'college', e.target.value)}
+                              style={{
+                                width: '100%',
+                                height: '42px',
+                                padding: '8px 12px',
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '0.88rem',
+                                fontWeight: '600',
+                                color: '#0f172a',
+                                outline: 'none',
+                                boxSizing: 'border-box'
+                              }}
+                            >
+                              <option value="ACET">ACET</option>
+                              <option value="AEC">AEC</option>
+                              <option value="Aditya University">Aditya University</option>
+                            </select>
+                          </div>
+
+                          {/* Gender */}
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ display: 'block', fontSize: '0.86rem', fontWeight: '700', color: '#0f172a', marginBottom: '6px' }}>
+                              Gender
+                            </label>
+                            <select
+                              value={p.gender || 'Male'}
+                              onChange={(e) => handleParticipantChange(index, 'gender', e.target.value)}
+                              style={{
+                                width: '100%',
+                                height: '42px',
+                                padding: '8px 12px',
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '0.88rem',
+                                fontWeight: '600',
+                                color: '#0f172a',
+                                outline: 'none',
+                                boxSizing: 'border-box'
+                              }}
+                            >
+                              <option value="Select">Select</option>
+                              <option value="Male">Male</option>
+                              <option value="Female">Female</option>
+                              <option value="Other">Other</option>
+                            </select>
+                          </div>
                         </div>
 
-                        {/* Full Name */}
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ marginBottom: '4px' }}>Full Name *</label>
-                          <input
-                            type="text"
-                            required
-                            placeholder="Full legal name"
-                            className={`form-control ${errors[`name_${index}`] ? 'is-invalid' : ''}`}
-                            value={p.name}
-                            onChange={(e) => handleParticipantChange(index, 'name', e.target.value)}
-                          />
-                          {errors[`name_${index}`] && <div className="form-error-msg">{errors[`name_${index}`]}</div>}
+                        {/* Row 2: Mobile | Email | Year of study | Departments */}
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                          gap: '16px'
+                        }}>
+                          {/* Mobile */}
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ display: 'block', fontSize: '0.86rem', fontWeight: '700', color: '#0f172a', marginBottom: '6px' }}>
+                              Mobile
+                            </label>
+                            <input
+                              type="tel"
+                              inputMode="numeric"
+                              maxLength={10}
+                              placeholder="Mobile"
+                              value={p.phone}
+                              onChange={(e) => handleParticipantChange(index, 'phone', e.target.value)}
+                              style={{
+                                width: '100%',
+                                height: '42px',
+                                padding: '8px 12px',
+                                background: '#f8fafc',
+                                border: errors[`phone_${index}`] ? '1.5px solid #ef4444' : '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '0.88rem',
+                                fontWeight: '600',
+                                color: '#0f172a',
+                                outline: 'none',
+                                boxSizing: 'border-box'
+                              }}
+                            />
+                            {errors[`phone_${index}`] && (
+                              <div style={{ color: '#ef4444', fontSize: '0.74rem', marginTop: '4px' }}>
+                                {errors[`phone_${index}`]}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Email */}
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ display: 'block', fontSize: '0.86rem', fontWeight: '700', color: '#0f172a', marginBottom: '6px' }}>
+                              Email
+                            </label>
+                            <input
+                              type="email"
+                              placeholder="Email"
+                              value={p.email}
+                              onChange={(e) => handleParticipantChange(index, 'email', e.target.value)}
+                              style={{
+                                width: '100%',
+                                height: '42px',
+                                padding: '8px 12px',
+                                background: '#f8fafc',
+                                border: errors[`email_${index}`] ? '1.5px solid #ef4444' : '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '0.88rem',
+                                fontWeight: '600',
+                                color: '#0f172a',
+                                outline: 'none',
+                                boxSizing: 'border-box'
+                              }}
+                            />
+                            {errors[`email_${index}`] && (
+                              <div style={{ color: '#ef4444', fontSize: '0.74rem', marginTop: '4px' }}>
+                                {errors[`email_${index}`]}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Year of study */}
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ display: 'block', fontSize: '0.86rem', fontWeight: '700', color: '#0f172a', marginBottom: '6px' }}>
+                              Year of study
+                            </label>
+                            <select
+                              value={p.year || 'Select'}
+                              onChange={(e) => handleParticipantChange(index, 'year', e.target.value)}
+                              style={{
+                                width: '100%',
+                                height: '42px',
+                                padding: '8px 12px',
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '0.88rem',
+                                fontWeight: '600',
+                                color: '#0f172a',
+                                outline: 'none',
+                                boxSizing: 'border-box'
+                              }}
+                            >
+                              <option value="Select">Select</option>
+                              <option value="1st Year">1st Year</option>
+                              <option value="2nd Year">2nd Year</option>
+                              <option value="3rd Year">3rd Year</option>
+                              <option value="4th Year">4th Year</option>
+                            </select>
+                          </div>
+
+                          {/* Departments (auto-selected from branch matching name or alternativeNames!) */}
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ display: 'block', fontSize: '0.86rem', fontWeight: '700', color: '#0f172a', marginBottom: '6px' }}>
+                              Departments
+                            </label>
+                            <select
+                              value={p.department || 'Select'}
+                              onChange={(e) => handleParticipantChange(index, 'department', e.target.value)}
+                              style={{
+                                width: '100%',
+                                height: '42px',
+                                padding: '8px 12px',
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '0.88rem',
+                                fontWeight: '700',
+                                color: '#0f172a',
+                                outline: 'none',
+                                boxSizing: 'border-box'
+                              }}
+                            >
+                              {p.department && p.department !== 'Select' ? (
+                                <option value={p.department}>{p.department}</option>
+                              ) : (
+                                <option value="Select">Select</option>
+                              )}
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Row 3: Branch | Location */}
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                          gap: '16px'
+                        }}>
+                          {/* Branch (Not editable, auto-populated from roll number) */}
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label style={{ display: 'block', fontSize: '0.86rem', fontWeight: '700', color: '#0f172a', marginBottom: '6px' }}>
+                              Branch
+                            </label>
+                            <input
+                              type="text"
+                              readOnly
+                              tabIndex={-1}
+                              placeholder="Branch"
+                              value={p.branch || ''}
+                              style={{
+                                width: '100%',
+                                height: '42px',
+                                padding: '8px 12px',
+                                background: '#f1f5f9',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: '8px',
+                                fontSize: '0.88rem',
+                                fontWeight: '700',
+                                color: '#0f172a',
+                                outline: 'none',
+                                boxSizing: 'border-box',
+                                cursor: 'not-allowed',
+                                userSelect: 'none'
+                              }}
+                              title="Branch is auto-populated from roll number and cannot be edited"
+                            />
+                          </div>
+
+                          {/* Location */}
+                          <div className="form-group" style={{ marginBottom: 0, gridColumn: 'span 2' }}>
+                            <label style={{ display: 'block', fontSize: '0.86rem', fontWeight: '700', color: '#0f172a', marginBottom: '6px' }}>
+                              Location
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Location"
+                              value={p.location || ''}
+                              onChange={(e) => handleParticipantChange(index, 'location', e.target.value)}
+                              style={{
+                                width: '100%',
+                                height: '42px',
+                                padding: '8px 12px',
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '0.88rem',
+                                fontWeight: '600',
+                                color: '#0f172a',
+                                outline: 'none',
+                                boxSizing: 'border-box'
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
-
-                      {/* Contact & Branch Grid */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ marginBottom: '4px' }}>
-                            WhatsApp Mobile {isLead ? '*' : '(Optional)'}
-                          </label>
-                          <input
-                            type="tel"
-                            inputMode="numeric"
-                            maxLength={10}
-                            required={isLead}
-                            placeholder="10-digit mobile"
-                            className={`form-control ${errors[`phone_${index}`] ? 'is-invalid' : ''}`}
-                            value={p.phone}
-                            onChange={(e) => handleParticipantChange(index, 'phone', e.target.value)}
-                          />
-                          {errors[`phone_${index}`] && <div className="form-error-msg">{errors[`phone_${index}`]}</div>}
-                        </div>
-
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ marginBottom: '4px' }}>Department *</label>
-                          <select
-                            className="form-control"
-                            value={p.department || 'CSE'}
-                            onChange={(e) => handleParticipantChange(index, 'department', e.target.value)}
-                          >
-                            <option value="CSE">CSE / AI & ML / Data Science</option>
-                            <option value="IT">Information Technology</option>
-                            <option value="ECE">ECE</option>
-                            <option value="EEE">EEE</option>
-                            <option value="MECH">Mechanical</option>
-                            <option value="CIVIL">Civil Engineering</option>
-                            <option value="AGRI">Agricultural</option>
-                            <option value="PHARMACY">Pharmacy / Management</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Lead Email */}
-                      {isLead && (
-                        <div className="form-group" style={{ marginTop: '12px', marginBottom: 0 }}>
-                          <label className="form-label" style={{ marginBottom: '4px' }}>Email Address *</label>
-                          <input
-                            type="email"
-                            required
-                            placeholder="student@aditya.ac.in"
-                            className={`form-control ${errors[`email_${index}`] ? 'is-invalid' : ''}`}
-                            value={p.email}
-                            onChange={(e) => handleParticipantChange(index, 'email', e.target.value)}
-                          />
-                          {errors[`email_${index}`] && <div className="form-error-msg">{errors[`email_${index}`]}</div>}
-                        </div>
-                      )}
                     </div>
                   );
                 })}

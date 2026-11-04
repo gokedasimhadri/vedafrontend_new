@@ -1,7 +1,31 @@
 import React from 'react';
-import { Calendar, Users, UserCheck, IndianRupee, ArrowRight, Cpu } from 'lucide-react';
+import { Calendar, Users, UserCheck, IndianRupee, ArrowRight, Cpu, CheckCircle2 } from 'lucide-react';
+import { isEventRegisteredByStudent } from '../api/centralApi';
 
-export default function EventCard({ event, onViewDetails, onRegister }) {
+export default function EventCard({
+  event,
+  onViewDetails,
+  onRegister,
+  onMyPassesClick,
+  userRegistrations = [],
+  isRegistered: propIsRegistered
+}) {
+  // Determine if student has already registered for this event
+  const effectiveRegistrations = Array.isArray(userRegistrations) && userRegistrations.length > 0
+    ? userRegistrations
+    : (() => {
+        try {
+          const raw = localStorage.getItem('veda_student_registrations');
+          return raw ? JSON.parse(raw) : [];
+        } catch {
+          return [];
+        }
+      })();
+
+  const isRegistered = propIsRegistered !== undefined
+    ? Boolean(propIsRegistered)
+    : isEventRegisteredByStudent(event, effectiveRegistrations);
+
   // Normalize fee
   const feeAmount = event.fee?.amountPerUnit !== undefined
     ? event.fee.amountPerUnit
@@ -76,6 +100,30 @@ export default function EventCard({ event, onViewDetails, onRegister }) {
       }}
       onClick={() => onViewDetails && onViewDetails(event)}
     >
+      {/* Top-Right "Already Registered" Badge */}
+      {isRegistered && (
+        <div style={{
+          position: 'absolute',
+          top: '16px',
+          right: '16px',
+          background: 'linear-gradient(135deg, #15803d 0%, #16a34a 100%)',
+          color: '#ffffff',
+          borderRadius: '9999px',
+          padding: '5px 12px',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '5px',
+          fontSize: '0.74rem',
+          fontWeight: '800',
+          letterSpacing: '0.03em',
+          boxShadow: '0 2px 8px rgba(22, 163, 74, 0.35)',
+          zIndex: 2
+        }}>
+          <CheckCircle2 size={13} color="#ffffff" />
+          <span>Registered</span>
+        </div>
+      )}
+
       {/* Top Date Pill Badge (Matching Screenshot 1) */}
       <div style={{ paddingTop: '18px', display: 'flex', justifyContent: 'center' }}>
         <div style={{
@@ -309,38 +357,81 @@ export default function EventCard({ event, onViewDetails, onRegister }) {
           <ArrowRight size={14} />
         </button>
 
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onRegister && onRegister(event);
-          }}
-          style={{
-            background: '#071830',
-            color: '#ffffff',
-            padding: '8px 18px',
-            borderRadius: '9999px',
-            fontSize: '0.86rem',
-            fontWeight: '800',
-            border: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(7, 24, 48, 0.25)',
-            transition: 'all 0.2s ease'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.background = '#0284c7';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.background = '#071830';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}
-        >
-          <span>Register Now</span>
-        </button>
+        {isRegistered ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onMyPassesClick) {
+                onMyPassesClick();
+              } else if (onViewDetails) {
+                onViewDetails(event);
+              }
+            }}
+            title="You are already registered for this event. Click to view pass."
+            style={{
+              background: '#dcfce7',
+              color: '#15803d',
+              padding: '8px 16px',
+              borderRadius: '9999px',
+              fontSize: '0.84rem',
+              fontWeight: '800',
+              border: '1.5px solid #86efac',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              boxShadow: '0 1px 4px rgba(22, 163, 74, 0.15)',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = '#bbf7d0';
+              e.currentTarget.style.borderColor = '#4ade80';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = '#dcfce7';
+              e.currentTarget.style.borderColor = '#86efac';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            <CheckCircle2 size={15} color="#15803d" />
+            <span>Already Registered</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRegister && onRegister(event);
+            }}
+            style={{
+              background: '#071830',
+              color: '#ffffff',
+              padding: '8px 18px',
+              borderRadius: '9999px',
+              fontSize: '0.86rem',
+              fontWeight: '800',
+              border: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(7, 24, 48, 0.25)',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = '#0284c7';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = '#071830';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            <span>Register Now</span>
+          </button>
+        )}
       </div>
     </div>
   );

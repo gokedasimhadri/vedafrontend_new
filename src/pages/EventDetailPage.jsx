@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Calendar, Phone, Bot } from 'lucide-react';
-import { centralApi } from '../api/centralApi';
+import { ArrowLeft, Calendar, Phone, Bot, CheckCircle2 } from 'lucide-react';
+import { centralApi, isEventRegisteredByStudent } from '../api/centralApi';
 
 // Initials generator
 function getInitials(name) {
@@ -92,10 +92,33 @@ function StudentAvatar({ name, rollNo, photoUrl }) {
   );
 }
 
-export default function EventDetailPage({ event, onBack, onRegister, committeeMembers: propCommitteeMembers = [] }) {
+export default function EventDetailPage({
+  event,
+  onBack,
+  onRegister,
+  onMyPassesClick,
+  userRegistrations = [],
+  isRegistered: propIsRegistered,
+  committeeMembers: propCommitteeMembers = []
+}) {
   if (!event) return null;
 
   const [committeeList, setCommitteeList] = useState(propCommitteeMembers);
+
+  const effectiveRegistrations = Array.isArray(userRegistrations) && userRegistrations.length > 0
+    ? userRegistrations
+    : (() => {
+        try {
+          const raw = localStorage.getItem('veda_student_registrations');
+          return raw ? JSON.parse(raw) : [];
+        } catch {
+          return [];
+        }
+      })();
+
+  const isRegistered = propIsRegistered !== undefined
+    ? Boolean(propIsRegistered)
+    : isEventRegisteredByStudent(event, effectiveRegistrations);
 
   useEffect(() => {
     if (propCommitteeMembers && propCommitteeMembers.length > 0) {
@@ -599,6 +622,36 @@ export default function EventDetailPage({ event, onBack, onRegister, committeeMe
                 }}
               >
                 Registration Closed
+              </button>
+            ) : isRegistered ? (
+              <button
+                onClick={() => (onMyPassesClick ? onMyPassesClick() : onBack())}
+                style={{
+                  background: '#dcfce7',
+                  color: '#15803d',
+                  padding: '12px 32px',
+                  borderRadius: '9999px',
+                  fontWeight: '800',
+                  fontSize: '0.96rem',
+                  border: '1.5px solid #86efac',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 14px rgba(22, 163, 74, 0.2)',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = '#bbf7d0';
+                  e.currentTarget.style.borderColor = '#4ade80';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = '#dcfce7';
+                  e.currentTarget.style.borderColor = '#86efac';
+                }}
+              >
+                <CheckCircle2 size={18} color="#15803d" />
+                <span>Already Registered • View Pass</span>
               </button>
             ) : (
               <button

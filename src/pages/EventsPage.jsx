@@ -34,9 +34,11 @@ export default function EventsPage({
   categories = [],
   selectedCategory = null,
   setSelectedCategory,
+  userRegistrations = [],
   onRefresh,
   onViewDetails,
-  onRegister
+  onRegister,
+  onMyPassesClick
 }) {
   const [activeCategory, setActiveCategory] = useState(selectedCategory);
   const [selectedSubcategory, setSelectedSubcategory] = useState('ALL');
@@ -349,8 +351,10 @@ export default function EventsPage({
                 <EventCard
                   key={event._id || event.slug}
                   event={event}
+                  userRegistrations={userRegistrations}
                   onViewDetails={onViewDetails}
                   onRegister={onRegister}
+                  onMyPassesClick={onMyPassesClick}
                 />
               ))}
             </div>

@@ -4,11 +4,19 @@ import react from '@vitejs/plugin-react';
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const backendUrl = env.VITE_BACKEND_URL || 'http://localhost:9022';
+  const backendUrl = env.VITE_BACKEND_URL;
   const port = parseInt(env.VITE_PORT, 10) || 5174;
+  const eventType = env.EVENT_TYPE || env.VITE_EVENT_TYPE || 'VEDA';
+  const eventAcademicYear = env.EVENT_ACADEMIC_YEAR || env.VITE_EVENT_ACADEMIC_YEAR || '2026-2027';
 
   return {
     plugins: [react()],
+    define: {
+      'import.meta.env.EVENT_TYPE': JSON.stringify(eventType),
+      'import.meta.env.VITE_EVENT_TYPE': JSON.stringify(eventType),
+      'import.meta.env.EVENT_ACADEMIC_YEAR': JSON.stringify(eventAcademicYear),
+      'import.meta.env.VITE_EVENT_ACADEMIC_YEAR': JSON.stringify(eventAcademicYear),
+    },
     server: {
       port,
       host: true,

@@ -12,7 +12,8 @@ import RegistrationModal from './components/RegistrationModal';
 import EventDetailPage from './pages/EventDetailPage';
 import StudentLoginModal from './components/StudentLoginModal';
 import MyRegistrationsPage from './pages/MyRegistrationsPage';
-import { centralApi } from './api/centralApi';
+import ErrorBoundary from './components/ErrorBoundary';
+import { centralApi, isEventRegisteredByStudent } from './api/centralApi';
 import './styles/veda.css';
 
 export default function App() {
@@ -32,6 +33,17 @@ export default function App() {
       return null;
     }
   });
+
+  // Track student's registered events
+  const [userRegistrations, setUserRegistrations] = useState(() => {
+    try {
+      const saved = localStorage.getItem('veda_student_registrations');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [pendingEventForRegister, setPendingEventForRegister] = useState(null);
 
@@ -40,6 +52,34 @@ export default function App() {
   const [selectedEventForRegister, setSelectedEventForRegister] = useState(null);
   const [committeeMembers, setCommitteeMembers] = useState([]);
 
+  // Fetch student's registrations to accurately detect already registered events
+  const loadUserRegistrations = async (user = currentUser) => {
+    const rollOrId = user?.roll || user?.rollNumber || user?._id;
+    if (!rollOrId) {
+      setUserRegistrations([]);
+      localStorage.removeItem('veda_student_registrations');
+      return;
+    }
+    try {
+      const currentEventType = (import.meta.env.VITE_EVENT_TYPE || 'VEDA').toUpperCase();
+      const currentAcademicYear = (import.meta.env.VITE_EVENT_ACADEMIC_YEAR || '2026-2027').trim();
+      const list = await centralApi.getStudentRegistrationsWithPayments(rollOrId, currentEventType, currentAcademicYear);
+      const safeList = Array.isArray(list) ? list : [];
+      setUserRegistrations(safeList);
+      try {
+        localStorage.setItem('veda_student_registrations', JSON.stringify(safeList));
+      } catch {
+        // quota fallback
+      }
+    } catch (err) {
+      console.error('Failed to load user registrations in App:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadUserRegistrations();
+  }, [currentUser]);
+
   // Load real backend data on mount
   const loadData = async () => {
     setLoading(true);
@@ -47,7 +87,7 @@ export default function App() {
       const [cats, evts, comm] = await Promise.all([
         centralApi.getVedaCategories(),
         centralApi.getVedaEvents(),
-        centralApi.getOrganisationCommittee('VEDA')
+        centralApi.getOrganisationCommittee()
       ]);
       setCategories(cats || []);
       setEvents(evts || []);
@@ -63,7 +103,13 @@ export default function App() {
     loadData();
   }, []);
 
-  // Intercept registration to require login
+  const handleOpenMyPasses = () => {
+    setActivePage('my-passes');
+    setSelectedEventForDetails(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Intercept registration to require login or redirect if already registered
   const handleInitiateRegister = (evt) => {
     const targetEvent = evt || (events.length > 0 ? events[0] : null);
     if (!targetEvent) return;
@@ -71,22 +117,36 @@ export default function App() {
     if (!currentUser) {
       setPendingEventForRegister(targetEvent);
       setShowLoginModal(true);
-    } else {
-      setSelectedEventForRegister(targetEvent);
+      return;
     }
+
+    // If already registered by this student, navigate directly to My Passes
+    if (isEventRegisteredByStudent(targetEvent, userRegistrations)) {
+      handleOpenMyPasses();
+      return;
+    }
+
+    setSelectedEventForRegister(targetEvent);
   };
 
   const handleLoginSuccess = (student) => {
     setCurrentUser(student);
+    loadUserRegistrations(student);
     if (pendingEventForRegister) {
-      setSelectedEventForRegister(pendingEventForRegister);
+      if (isEventRegisteredByStudent(pendingEventForRegister, userRegistrations)) {
+        handleOpenMyPasses();
+      } else {
+        setSelectedEventForRegister(pendingEventForRegister);
+      }
       setPendingEventForRegister(null);
     }
   };
 
   const handleLogout = () => {
     localStorage.removeItem('veda_student');
+    localStorage.removeItem('veda_student_registrations');
     setCurrentUser(null);
+    setUserRegistrations([]);
   };
 
   return (
@@ -107,11 +167,7 @@ export default function App() {
         currentUser={currentUser}
         onLoginClick={() => setShowLoginModal(true)}
         onLogoutClick={handleLogout}
-        onMyPassesClick={() => {
-          setActivePage('my-passes');
-          setSelectedEventForDetails(null);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
+        onMyPassesClick={handleOpenMyPasses}
       />
 
       {/* Main Content Area - Multi-Page View Routing */}
@@ -120,11 +176,13 @@ export default function App() {
           <EventDetailPage
             event={selectedEventForDetails}
             committeeMembers={committeeMembers}
+            userRegistrations={userRegistrations}
             onBack={() => {
               setSelectedEventForDetails(null);
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             onRegister={(evt) => handleInitiateRegister(evt)}
+            onMyPassesClick={handleOpenMyPasses}
           />
         ) : (
           <>
@@ -132,6 +190,7 @@ export default function App() {
               <HomePage
                 events={events}
                 categories={categories}
+                userRegistrations={userRegistrations}
                 onNavigate={(page) => {
                   setActivePage(page);
                   setSelectedEventForDetails(null);
@@ -147,6 +206,7 @@ export default function App() {
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 onRegister={(evt) => handleInitiateRegister(evt)}
+                onMyPassesClick={handleOpenMyPasses}
               />
             )}
 
@@ -156,13 +216,18 @@ export default function App() {
                 categories={categories}
                 selectedCategory={selectedCategory}
                 setSelectedCategory={setSelectedCategory}
+                userRegistrations={userRegistrations}
                 loading={loading}
-                onRefresh={loadData}
+                onRefresh={() => {
+                  loadData();
+                  loadUserRegistrations();
+                }}
                 onViewDetails={(evt) => {
                   setSelectedEventForDetails(evt);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 onRegister={(evt) => handleInitiateRegister(evt)}
+                onMyPassesClick={handleOpenMyPasses}
               />
             )}
 
@@ -183,14 +248,18 @@ export default function App() {
             )}
 
             {activePage === 'my-passes' && currentUser && (
-              <MyRegistrationsPage
-                currentUser={currentUser}
-                onRegisterMore={() => {
-                  setActivePage('events');
-                  setSelectedCategory(null);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-              />
+              <ErrorBoundary>
+                <MyRegistrationsPage
+                  currentUser={currentUser}
+                  events={events}
+                  onRegistrationUpdated={() => loadUserRegistrations()}
+                  onRegisterMore={() => {
+                    setActivePage('events');
+                    setSelectedCategory(null);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                />
+              </ErrorBoundary>
             )}
           </>
         )}
@@ -204,13 +273,13 @@ export default function App() {
         <RegistrationModal
           event={selectedEventForRegister}
           currentUser={currentUser}
+          userRegistrations={userRegistrations}
           onClose={() => setSelectedEventForRegister(null)}
           onRequestLogin={() => setShowLoginModal(true)}
           onSuccess={() => {
             setSelectedEventForRegister(null);
-            setActivePage('my-passes');
-            setSelectedEventForDetails(null);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            loadUserRegistrations();
+            handleOpenMyPasses();
           }}
         />
       )}

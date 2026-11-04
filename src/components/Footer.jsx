@@ -50,8 +50,7 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div style={{ borderTop: '1px solid #1e293b', paddingTop: '20px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#64748b' }}>
-          <div>© 2026 Aditya University. All rights reserved. VEDA National Technical Symposium.</div>
-          <div>Integrated with Unified Central Events Backend.</div>
+          <div>Designed & Developed by <b>IT Applications</b></div>
         </div>
       </div>
     </footer>

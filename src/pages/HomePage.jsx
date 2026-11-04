@@ -7,10 +7,12 @@ import { ArrowRight } from 'lucide-react';
 export default function HomePage({
   events = [],
   categories = [],
+  userRegistrations = [],
   onNavigate,
   onSelectCategory,
   onViewDetails,
-  onRegister
+  onRegister,
+  onMyPassesClick
 }) {
   // Compute event counts per category
   const eventsCountByCategory = events.reduce((acc, ev) => {
@@ -140,8 +142,10 @@ export default function HomePage({
                 <EventCard
                   key={event._id || event.slug}
                   event={event}
+                  userRegistrations={userRegistrations}
                   onViewDetails={onViewDetails}
                   onRegister={onRegister}
+                  onMyPassesClick={onMyPassesClick}
                 />
               ))}
             </div>
